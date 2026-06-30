@@ -1,5 +1,5 @@
 from transformers import BertTokenizer, AutoTokenizer
-from model import GaussianEmbeddingTuner
+from agent.model import GaussianEmbeddingTuner
 import torch
 
 
@@ -73,7 +73,7 @@ def load_tokenizer(args):
             '/home/models/bert-base-uncased')
     elif args.model_name == 'all-MiniLM-L6-v2':
         tokenizer = AutoTokenizer.from_pretrained(
-            f'/home/models/{args.model_name}')
+            f'sentence-transformers/all-MiniLM-L6-v2')
     elif args.model_name == 'Qwen3-Embedding-0.6B':
         tokenizer = AutoTokenizer.from_pretrained(
             '/home/models/qwen3-embedding-0.6b', padding_side='left')

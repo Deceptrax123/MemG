@@ -1,7 +1,7 @@
-from memory import LocalGeometricDB, GeoLogicMemorySystem
+from agent.memory import LocalGeometricDB, GeoLogicMemorySystem
 import json
 from collections import defaultdict
-from metrics import *
+from agent.metrics import *
 import threading
 import concurrent.futures
 

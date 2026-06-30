@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-from optimizer import RiemannianCayleySGD
-from math_utils import *
+from agent.optimizer import RiemannianCayleySGD
+from agent.math_utils import *
 
 
 class AGMRiemmannianPolicy:

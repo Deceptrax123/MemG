@@ -2,22 +2,21 @@ import os
 import torch
 import networkx as nx
 import faiss
-import instructor
-from schemas import *
+from agent.schemas import *
 import concurrent.futures
 from dateutil import parser as date_parser
-from optimizer import RiemannianCayleySGD
+from agent.optimizer import RiemannianCayleySGD
 from sentence_transformers import SentenceTransformer
 import time
-from db import LocalGeometricDB
-from policy import AGMRiemmannianPolicy
-from math_utils import *
-from openai import AzureOpenAI, OpenAI
+from agent.db import LocalGeometricDB
+from agent.policy import AGMRiemmannianPolicy
+from agent.math_utils import *
+from agent.openai_config import build_openai_client, openai_model_from_args
 
 
 class GeoLogicMemorySystem:
     def __init__(self, args, trained_encoder_model, tokenizer):
-        args.device == 'cuda' if args.cuda is True else 'cpu'
+        args.device = 'cuda' if args.cuda is True else 'cpu'
         self.args = args
         self.encoder = trained_encoder_model.to(args.device).eval()
         self.tokenizer = tokenizer
@@ -25,26 +24,8 @@ class GeoLogicMemorySystem:
         self.db = LocalGeometricDB(
             args, encoder=self.encoder, tokenizer=self.tokenizer)
 
-        if self.args.provider == 'azure':
-            client = AzureOpenAI(
-                api_key=os.getenv('AZURE_OPENAI_KEY'),
-                api_version="2024-12-01-preview",
-                azure_endpoint=self.args.azure_endpoint
-            )
-
-            self.llm_client = instructor.from_openai(
-                client)
-        elif self.args.provider == 'open_router':
-            client = OpenAI(
-                api_key=os.getenv("OPENROUTER_API_KEY"),
-                base_url='https://openrouter.ai/api/v1'
-            )
-            self.llm_client = instructor.from_openai(client)
-
-        else:
-            self.llm_client = instructor.from_provider(
-                'openai/gpt-4.1-mini'
-            )
+        self.llm_client = build_openai_client(self.args)
+        self.gen_model_name = openai_model_from_args(self.args)
 
         self.nodes_dict = {}
 
@@ -143,7 +124,7 @@ class GeoLogicMemorySystem:
                 """
 
         try:
-            extraction = self.llm_client.chat.completions.create(model='openai/gpt-4.1-mini', response_model=MemoryExtractionList, messages=[
+            extraction = self.llm_client.chat.completions.create(model=self.gen_model_name, response_model=MemoryExtractionList, messages=[
                 {'role': 'user', 'content': prompt}], temperature=0.1)
 
             extracted_facts = []
@@ -331,7 +312,7 @@ class GeoLogicMemorySystem:
                     """
         try:
             response = self.llm_client.chat.completions.create(
-                model='openai/gpt-4.1-mini',
+                model=self.gen_model_name,
                 response_model=FreeTextResponse,
                 messages=[
                     {

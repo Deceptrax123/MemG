@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 from transformers import BertConfig, BertModel, BertTokenizer, AutoModel, AutoTokenizer
-from layers import *
+from agent.layers import *
 import torch.nn.functional as F
 from peft import LoraConfig, TaskType, get_peft_model
 
@@ -38,7 +38,7 @@ class GaussianEmbeddingTuner(nn.Module):
                 'nomic-ai/nomic-embed-text-v1.5', trust_remote_code=True, safe_serialization=True)
         elif self.args.model_name == 'all-MiniLM-L6-v2':
             model = AutoModel.from_pretrained(
-                f'sentence-transformers/{self.args.model_name}')
+                f'sentence-transformers/all-MiniLM-L6-v2')
             self.model_hidden_size = 384
         elif self.args.model_name == 'bge-base-en-v1.5':
             model = AutoModel.from_pretrained('BAAI/bge-base-en-v1.5')

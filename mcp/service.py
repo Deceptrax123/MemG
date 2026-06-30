@@ -6,7 +6,9 @@ import os
 from typing import Any, Dict, List, Optional
 
 from .config import build_runtime_config
-
+from agent.helpers import load_model, load_tokenizer
+from agent.memory import GeoLogicMemorySystem
+from agent.schemas import AtomicFact
 
 class GeoLogicMemoryService:
     def __init__(self, args):
@@ -24,8 +26,6 @@ class GeoLogicMemoryService:
                 "Pass --weights-path or call configure_memory."
             )
 
-        from agent.helpers import load_model, load_tokenizer
-        from agent.memory import GeoLogicMemorySystem
 
         if self.config.device == "cuda":
             import torch
@@ -95,7 +95,6 @@ class GeoLogicMemoryService:
 
     def ingest_facts(self, facts: List[Dict[str, Any]]):
         system = self._require_system()
-        from agent.schemas import AtomicFact
 
         before = len(system.db.nodes_dict)
         atomic_facts = [AtomicFact(**fact) for fact in facts]

@@ -1,10 +1,9 @@
-import instructor
 import faiss
 import os
 import pickle
-from stiefel_node import StiefelGaussianNode
+from agent.stiefel_node import StiefelGaussianNode
 from typing import List
-from schemas import *
+from agent.schemas import *
 import dateutil.parser
 import torch.nn.functional as F
 import torch
@@ -12,7 +11,7 @@ from sentence_transformers import SentenceTransformer
 from rank_bm25 import BM25Okapi
 from rapidfuzz import fuzz
 import numpy as np
-from openai import AzureOpenAI, OpenAI
+from agent.openai_config import build_openai_client, openai_model_from_args
 from dotenv import load_dotenv
 
 load_dotenv('.env')
@@ -29,25 +28,8 @@ class LocalGeometricDB:
             'all-MiniLM-L6-v2').to(args.device)
         os.makedirs(cache_dir, exist_ok=True)
 
-        if self.args.provider == 'azure':
-            client = AzureOpenAI(
-                api_key=os.getenv('AZURE_OPENAI_KEY'),
-                api_version="2024-12-01-preview",
-                azure_endpoint=self.args.azure_endpoint
-            )
-
-            self.llm_client = instructor.from_openai(
-                client)
-        elif self.args.provider == 'open_router':
-            client = OpenAI(
-                api_key=os.getenv("OPENROUTER_API_KEY"),
-                base_url='https://openrouter.ai/api/v1'
-            )
-            self.llm_client = instructor.from_openai(client)
-        else:
-            self.llm_client = instructor.from_provider(
-                'openai/gpt-4.1-mini'
-            )
+        self.llm_client = build_openai_client(self.args)
+        self.gen_model_name = openai_model_from_args(self.args)
 
         self.clear()
 
@@ -230,7 +212,7 @@ class LocalGeometricDB:
                     """
         try:
             plan = self.llm_client.chat.completions.create(
-                model="openai/gpt-4.1-mini",
+                model=self.gen_model_name,
                 response_model=RetrievalPlan,
                 messages=[{"role": "system", "content": "You are a precise database query planner."},
                           {"role": "user", "content": prompt}]
@@ -240,8 +222,8 @@ class LocalGeometricDB:
                 f"  [Plan] LLM Planning failed: {e}. Falling back to raw query.")
             plan = RetrievalPlan(
                 difficulty_level="single_hop", dense_semantic_query=query_text,
-                decomposed_queries=[
-                    query_text], target_entities=[], temporal_intent="all"
+                decomposed_queries=[query_text], target_entities=[],
+                search_keywords=[], temporal_intent="all"
             )
 
         queries_to_embed = [plan.dense_semantic_query]
@@ -326,18 +308,18 @@ class LocalGeometricDB:
                     if idx != -1 and idx in self.faiss_id_map:
                         retrieved_nids.add(self.faiss_id_map[idx])
 
-        # if self.bm25:
-        #     sparse_query = f"{' '.join(queries_to_embed)} {' '.join(plan.target_entities)} {' '.join(plan.search_keywords)}"
-        #     tokenized_query = sparse_query.lower().split()
+        if self.bm25:
+            sparse_query = f"{' '.join(queries_to_embed)} {' '.join(plan.target_entities)} {' '.join(plan.search_keywords)}"
+            tokenized_query = sparse_query.lower().split()
 
-        #     doc_scores = self.bm25.get_scores(tokenized_query)
+            doc_scores = self.bm25.get_scores(tokenized_query)
 
-        #     sparse_k = 25 if plan.difficulty_level == "open_domain" or plan.difficulty_level == 'multi_hop' else 15
-        #     top_bm25_indices = np.argsort(doc_scores)[::-1][:sparse_k]
+            sparse_k = 25 if plan.difficulty_level == "open_domain" or plan.difficulty_level == 'multi_hop' else 15
+            top_bm25_indices = np.argsort(doc_scores)[::-1][:sparse_k]
 
-        #     for idx in top_bm25_indices:
-        #         if doc_scores[idx] > 0 and idx in self.faiss_id_map:
-        #             retrieved_nids.add(self.faiss_id_map[idx])
+            for idx in top_bm25_indices:
+                if doc_scores[idx] > 0 and idx in self.faiss_id_map:
+                    retrieved_nids.add(self.faiss_id_map[idx])
 
         context_nodes = [self.nodes_dict[nid] for nid in retrieved_nids]
         if plan.temporal_intent in ["historical", "trajectory"]:

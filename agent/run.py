@@ -1,9 +1,9 @@
 import os
 import torch
 from tqdm import tqdm
-from memory import GeoLogicMemorySystem
-from locomo10_tester import LocomoTester
-from helpers import *
+from agent.memory import GeoLogicMemorySystem
+from agent.locomo10_tester import LocomoTester
+from agent.helpers import *
 import argparse
 
 
@@ -45,10 +45,13 @@ parser.add_argument('--base_threshold', type=float, default=0.3)
 parser.add_argument('--resume_idx', type=int, default=0)
 parser.add_argument('--top_k', type=int, default=15)
 
-# Azure
-parser.add_argument('--provider', type=str, default='openai')
-parser.add_argument('--azure_endpoint', type=str, default='resource')
-parser.add_argument('--gen_model_name', type=str, default='gpt-4.1-mini')
+# OpenAI generation settings
+parser.add_argument('--openai_api_key', type=str, default=None,
+                    help='OpenAI API key. Defaults to OPENAI_API_KEY from the environment.')
+parser.add_argument('--openai_base_url', type=str, default=None,
+                    help='Optional OpenAI-compatible base URL. Defaults to OPENAI_BASE_URL if set.')
+parser.add_argument('--gen_model_name', type=str, default='gpt-4.1-mini',
+                    choices=['gpt-4.1-mini', 'gpt-4.1', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini', 'o4-mini'])
 
 args = parser.parse_args()
 
