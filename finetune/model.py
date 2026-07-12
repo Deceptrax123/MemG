@@ -2,10 +2,9 @@ import torch
 import numpy as np
 import torch.nn as nn
 from transformers import BertConfig, BertModel, BertTokenizer, AutoModel, AutoTokenizer
-from layers import *
+from finetune.layers import *
 import torch.nn.functional as F
 from peft import LoraConfig, TaskType, get_peft_model
-from manifold_utils import *
 
 
 class GaussianEmbeddingTuner(nn.Module):

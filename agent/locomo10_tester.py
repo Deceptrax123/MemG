@@ -77,10 +77,17 @@ class LocomoTester:
                 ground_truth = str(qa['answer']) if 'answer' in list(
                     qa.keys()) else str(qa['adversarial_answer'])
                 q_type = str(qa.get('category'))
+                self.system.db.set_visualization_context(
+                    unique_conv_id, qa_idx + 1, q_type
+                )
 
                 try:
                     answer, rationale = self.system.answer_question(
                         question, top_k=self.args.top_k)
+
+                    self.system.db.visualize_query_answer(
+                        question, ground_truth, answer
+                    )
 
                     f1 = compute_f1(ground_truth, answer)
                     bleu = compute_bleu1(ground_truth, answer)

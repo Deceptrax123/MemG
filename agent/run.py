@@ -1,18 +1,16 @@
 import os
 import torch
-from tqdm import tqdm
-from agent.memory import GeoLogicMemorySystem
-from agent.locomo10_tester import LocomoTester
-from agent.helpers import *
 import argparse
-
+from agent.helpers import load_model, load_tokenizer
+from agent.locomo10_tester import LocomoTester
+from agent.memory import GeoLogicMemorySystem
 
 os.environ['WANDB_MODE'] = 'online'
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--window_size', type=int, default=3)
-parser.add_argument('--overlap_size', type=int, default=2)
+parser.add_argument('--window_size', type=int, default=20)
+parser.add_argument('--overlap_size', type=int, default=5)
 parser.add_argument('--hidden_dim', type=int, default=64)
 parser.add_argument('--model_name', type=str, default='all-MiniLM-L6-v2')
 parser.add_argument('--device', type=str, default='cuda')
@@ -43,7 +41,16 @@ parser.add_argument('--entity_weight', type=float, default=0.33)
 parser.add_argument('--topic_weight', type=float, default=0.33)
 parser.add_argument('--base_threshold', type=float, default=0.3)
 parser.add_argument('--resume_idx', type=int, default=0)
+parser.add_argument("--dataset_path", default="data/locomo10.json")
+parser.add_argument("--interval", type=int, default=5)
 parser.add_argument('--top_k', type=int, default=15)
+parser.add_argument("--visualize_planning", "--visualize_query_answers",
+                    dest="visualize_planning", action="store_true",
+                    help="Write query, reference-answer, prediction, and low-rank frame diagnostics.")
+parser.add_argument("--visualization_dir", default="visualizations/locomo_planning")
+parser.add_argument("--visualization_max_plans", type=int, default=50)
+parser.add_argument("--visualization_max_candidates", type=int, default=30)
+parser.add_argument("--visualization_dpi", type=int, default=150)
 
 # OpenAI generation settings
 parser.add_argument('--openai_api_key', type=str, default=None,
@@ -57,12 +64,18 @@ args = parser.parse_args()
 
 
 if __name__ == '__main__':
+
+
     torch.set_float32_matmul_precision('high')
-    torch.cuda.set_device(args.gpu_id)
+    args.cuda = args.device == "cuda"
+    if args.cuda:
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA requested but unavailable; pass --device cpu")
+        torch.cuda.set_device(args.gpu_id)
 
     tokenizer = load_tokenizer(args)
     model = load_model(args, weights_path=args.path)
 
     system = GeoLogicMemorySystem(args, model, tokenizer)
-    tester = LocomoTester(args, system, "../data/locomo10.json")
-    tester.run_test(resume_idx=args.resume_idx, interval=5)
+    tester = LocomoTester(args, system, args.dataset_path)
+    tester.run_test(resume_idx=args.resume_idx, interval=args.interval)

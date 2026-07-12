@@ -133,6 +133,33 @@ class Experiment(object):
                 self.optimizer.zero_grad()
 
             self.scheduler.step()
+            visualize_every = getattr(self.args, "visualize_every", 0)
+            if visualize_every > 0 and (step + 1) % visualize_every == 0:
+                try:
+                    from visualize_gaussians import visualize_projection_batch
+                    self.model.eval()
+                    with torch.no_grad():
+                        q_mu, q_lambda, q_frame, q_diag, _ = self.model.gaussian_projection(encode_query)
+                        p_mu, p_lambda, p_frame, p_diag, _ = self.model.gaussian_projection(encode_positives)
+                    sample_count = min(getattr(self.args, "visualization_examples", 4), len(q_mu), len(p_mu))
+                    means = torch.cat([q_mu[:sample_count], p_mu[:sample_count]])
+                    eigenvalues = torch.cat([q_lambda[:sample_count], p_lambda[:sample_count]])
+                    frames = torch.cat([q_frame[:sample_count], p_frame[:sample_count]])
+                    diagonals = torch.cat([q_diag[:sample_count], p_diag[:sample_count]])
+                    labels = [f"query {i + 1}" for i in range(sample_count)] + [f"passage {i + 1}" for i in range(sample_count)]
+                    output = os.path.join(
+                        getattr(self.args, "visualization_dir", "visualizations/finetune"),
+                        f"step_{step + 1:07d}.png",
+                    )
+                    visualize_projection_batch(
+                        output, labels=labels, means=means, lambdas=eigenvalues,
+                        frames=frames, diagonal_matrices=diagonals,
+                        title=f"Training geometry at step {step + 1}",
+                        dpi=getattr(self.args, "visualization_dpi", 150),
+                    )
+                    print(f"Wrote training geometry to {output}")
+                except Exception as exc:
+                    print(f"Visualization failed at step {step + 1}: {exc}")
             del encode_query, encode_negatives, encode_positives
             torch.cuda.empty_cache()
             gc.collect()

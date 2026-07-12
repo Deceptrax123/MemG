@@ -1,7 +1,7 @@
 import torch
 import argparse
 import os
-from utils import print_local_time, set_seed
+from finetune.utils import print_local_time, set_seed
 import wandb
 import time
 from dataset import QueryPassage

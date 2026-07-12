@@ -3,6 +3,9 @@ from types import SimpleNamespace
 
 import instructor
 from openai import OpenAI
+from dotenv import load_dotenv
+
+load_dotenv('/home/ubuntu/lilac/agent/.env')
 
 DEFAULT_OPENAI_MODEL = "gpt-4.1-mini"
 OPENAI_MODEL_CHOICES = (
@@ -30,6 +33,7 @@ def ensure_openai_args(args):
         args.openai_base_url = os.getenv("OPENAI_BASE_URL")
     if not hasattr(args, "gen_model_name"):
         args.gen_model_name = DEFAULT_OPENAI_MODEL
+
     return args
 
 

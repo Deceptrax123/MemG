@@ -1,6 +1,8 @@
 import faiss
 import os
 import pickle
+import re
+from pathlib import Path
 from agent.stiefel_node import StiefelGaussianNode
 from typing import List
 from agent.schemas import *
@@ -13,7 +15,7 @@ from rapidfuzz import fuzz
 import numpy as np
 from agent.openai_config import build_openai_client, openai_model_from_args
 from dotenv import load_dotenv
-
+from agent.visualize_planning import PlanningVisualizer
 load_dotenv('.env')
 
 
@@ -30,8 +32,44 @@ class LocalGeometricDB:
 
         self.llm_client = build_openai_client(self.args)
         self.gen_model_name = openai_model_from_args(self.args)
+        self.visualization_count = 0
+        self.reranking_visualization_count = 0
+        self.retrieval_visualization_count = 0
+        self.last_retrieval_plan = None
+        self.visualization_conversation_id = None
+        self.visualization_question_number = None
+        self.visualization_question_type = None
 
         self.clear()
+
+    def set_visualization_context(
+        self, conversation_id, question_number, question_type=None
+    ):
+        """Route every diagnostic for one question into the same stable folder."""
+        self.visualization_conversation_id = str(conversation_id)
+        self.visualization_question_number = int(question_number)
+        self.visualization_question_type = (
+            None if question_type is None else str(question_type)
+        )
+
+    @staticmethod
+    def _safe_folder_name(value):
+        safe = re.sub(r"[^A-Za-z0-9._-]+", "_", str(value)).strip("._")
+        return safe or "unknown"
+
+    def _visualization_output_dir(self):
+        base = Path(getattr(
+            self.args, "visualization_dir", "visualizations/locomo_planning"
+        ))
+        conversation = self._safe_folder_name(
+            self.visualization_conversation_id or "unscoped"
+        )
+        number = (
+            f"question_{self.visualization_question_number:03d}"
+            if self.visualization_question_number is not None
+            else "question_000"
+        )
+        return base / conversation / number
 
     def clear(self):
         self.nodes_dict = {}
@@ -175,6 +213,112 @@ class LocalGeometricDB:
         if self.corpus_tokens:
             self.bm25 = BM25Okapi(self.corpus_tokens)
 
+    def visualize_reranking(self, question, records):
+        if not getattr(self.args, "visualize_planning", False):
+            return None
+        if self.reranking_visualization_count >= getattr(
+            self.args, "visualization_max_plans", 50
+        ):
+            return None
+        try:
+            from agent.visualize_planning import PlanningVisualizer
+            output = PlanningVisualizer(
+                self._visualization_output_dir(),
+                dpi=getattr(self.args, "visualization_dpi", 150),
+            ).render_reranking(
+                question=question,
+                records=records,
+                max_candidates=getattr(self.args, "visualization_max_candidates", 30),
+            )
+            self.reranking_visualization_count += 1
+            print(f"  [Visualization] Wrote reranking geometry to {output}")
+            return output
+        except Exception as exc:
+            print(f"  [Visualization] Reranking plot failed: {exc}")
+            return None
+
+    def visualize_retrieval_hits(self, question, query_labels, records):
+        if not getattr(self.args, "visualize_planning", False):
+            return None
+        if self.retrieval_visualization_count >= getattr(
+            self.args, "visualization_max_plans", 50
+        ):
+            return None
+        try:
+            output = PlanningVisualizer(
+                self._visualization_output_dir(),
+                dpi=getattr(self.args, "visualization_dpi", 150),
+            ).render_retrieval_hits(
+                question=question,
+                query_labels=query_labels,
+                records=records,
+                max_candidates=getattr(
+                    self.args, "visualization_max_candidates", 30
+                ),
+            )
+            self.retrieval_visualization_count += 1
+            print(f"  [Visualization] Wrote FAISS retrieval hits to {output}")
+            return output
+        except Exception as exc:
+            print(f"  [Visualization] FAISS retrieval plot failed: {exc}")
+            return None
+
+    def visualize_query_answer(self, question, reference_answer, predicted_answer):
+        if not getattr(self.args, "visualize_planning", False):
+            return None
+        if self.visualization_count >= getattr(self.args, "visualization_max_plans", 50):
+            return None
+        try:
+            plan = self.last_retrieval_plan or {}
+            labels = ["raw query"]
+            texts = [question]
+            dense_query = str(plan.get("dense_semantic_query", "")).strip()
+            if dense_query and dense_query.casefold() != question.strip().casefold():
+                labels.append("dense query")
+                texts.append(dense_query)
+            seen_queries = {text.strip().casefold() for text in texts}
+            for index, hop in enumerate(plan.get("decomposed_queries", []) or [], 1):
+                hop = str(hop).strip()
+                if hop and hop.casefold() not in seen_queries:
+                    labels.append(f"hop {index}")
+                    texts.append(hop)
+                    seen_queries.add(hop.casefold())
+            for index, entity in enumerate(plan.get("target_entities", []) or [], 1):
+                entity = str(entity).strip()
+                if entity:
+                    labels.append(f"target entity {index}: {entity}")
+                    texts.append(entity)
+            labels.extend(["reference answer", "final answer"])
+            texts.extend([str(reference_answer), str(predicted_answer)])
+            tokenized = self.tokenizer(
+                texts, padding=True, truncation=True, return_tensors="pt"
+            ).to(self.args.device)
+            with torch.no_grad():
+                means, eigenvalues, frames, diagonals, _ = self.encoder.gaussian_projection(tokenized)
+            if means.dim() == 1:
+                means = means.unsqueeze(0)
+                eigenvalues = eigenvalues.unsqueeze(0)
+                frames = frames.unsqueeze(0)
+                diagonals = diagonals.unsqueeze(0)
+            output = PlanningVisualizer(
+                self._visualization_output_dir(),
+                dpi=getattr(self.args, "visualization_dpi", 150),
+            ).render_query_answer(
+                question=question,
+                reference_answer=str(reference_answer),
+                predicted_answer=str(predicted_answer),
+                means=means, lambdas=eigenvalues, frames=frames, diagonals=diagonals,
+                plan=self.last_retrieval_plan,
+                labels=labels,
+                texts=texts,
+            )
+            self.visualization_count += 1
+            print(f"  [Visualization] Wrote query-answer geometry to {output}")
+            return output
+        except Exception as exc:
+            print(f"  [Visualization] Query-answer plot failed: {exc}")
+            return None
+
     def retrieve_context_bag(self, query_text: str):
         print(f"\n  [Retrieval] Planning search for: '{query_text}'")
 
@@ -226,6 +370,10 @@ class LocalGeometricDB:
                 search_keywords=[], temporal_intent="all"
             )
 
+        self.last_retrieval_plan = (
+            plan.model_dump() if hasattr(plan, "model_dump") else dict(plan)
+        )
+
         queries_to_embed = [plan.dense_semantic_query]
         if plan.decomposed_queries:
             queries_to_embed.extend(plan.decomposed_queries)
@@ -240,13 +388,12 @@ class LocalGeometricDB:
 
             if mus.dim() == 1:
                 mus = mus.unsqueeze(0)
+                lambdas = lambdas.unsqueeze(0)
                 Vs = Vs.unsqueeze(0)
                 ds = ds.unsqueeze(0)
 
             d_vecs = torch.diagonal(ds, dim1=-2, dim2=-1)
-            v_squared = Vs**2
-            v_lambda_squared = v_squared*lambdas
-            sigma_effs = d_vecs + torch.sum(v_lambda_squared, dim=-1)
+            sigma_effs = d_vecs + torch.sum(Vs.square() * lambdas.unsqueeze(1), dim=-1)
 
         query_node = StiefelGaussianNode(
             node_id="q_0", text=plan.dense_semantic_query, topic="query",
@@ -255,6 +402,7 @@ class LocalGeometricDB:
         ).to(self.args.device)
 
         retrieved_nids = set()
+        faiss_hit_records = []
 
         if self.index.ntotal > 0:
             with torch.no_grad():
@@ -273,7 +421,7 @@ class LocalGeometricDB:
                     sum_inv_var = torch.zeros_like(sigma_effs[1].squeeze())
                     sum_mean_over_var = torch.zeros_like(mus[1].squeeze())
 
-                    start_idx = 1 if num_queries >= 3 else 0
+                    start_idx = 1
                     num_intersected = 0
 
                     for q_idx in range(start_idx, num_queries):
@@ -284,16 +432,11 @@ class LocalGeometricDB:
                         sum_mean_over_var += mu_k / (var_k + eps)
                         num_intersected += 1
 
-                    var_int = float(num_intersected) / (sum_inv_var + eps)
-
-                    mu_int = (var_int / float(num_intersected)) * \
-                        sum_mean_over_var
+                    var_int = 1.0 / (sum_inv_var + eps)
+                    mu_int = var_int * sum_mean_over_var
 
                     q_vec_int = torch.cat(
                         [mu_int, torch.sqrt(var_int)], dim=-1)
-
-                    if q_vec_int.dim() == 1:
-                        q_vec_int = q_vec_int.unsqueeze(0)
 
                     q_vecs_list.append(q_vec_int)
 
@@ -301,25 +444,79 @@ class LocalGeometricDB:
                     q_vecs_list).cpu().numpy().astype('float32')
 
             dense_k = self.index.ntotal
-            _, indices_matrix = self.index.search(q_vecs, dense_k)
+            distances_matrix, indices_matrix = self.index.search(q_vecs, dense_k)
+
+            query_labels = ["dense query"] + [
+                f"hop {index}" for index in range(1, len(queries_to_embed))
+            ]
+            if len(q_vecs_list) > len(query_labels):
+                query_labels.append("multi-hop intersection")
+            capture_k = (
+                min(dense_k, getattr(self.args, "visualization_max_candidates", 30))
+                if getattr(self.args, "visualize_planning", False)
+                else 0
+            )
+            for query_index, (distances, indices) in enumerate(
+                zip(distances_matrix, indices_matrix)
+            ):
+                query_vector = q_vecs[query_index]
+                for hit_rank, (distance, idx) in enumerate(
+                    zip(distances[:capture_k], indices[:capture_k]), 1
+                ):
+                    idx = int(idx)
+                    if idx == -1 or idx not in self.faiss_id_map:
+                        continue
+                    node_id = self.faiss_id_map[idx]
+                    candidate_vector = self.index.reconstruct(idx)
+                    mean_energy = float(np.sum(
+                        (query_vector[:self.dim] - candidate_vector[:self.dim]) ** 2
+                    ))
+                    std_profile_energy = float(np.sum(
+                        (query_vector[self.dim:] - candidate_vector[self.dim:]) ** 2
+                    ))
+                    node = self.nodes_dict[node_id]
+                    faiss_hit_records.append({
+                        "query_index": query_index,
+                        "query_label": query_labels[query_index],
+                        "query_text": (
+                            queries_to_embed[query_index]
+                            if query_index < len(queries_to_embed)
+                            else "product-of-Gaussians multi-hop intersection"
+                        ),
+                        "hit_rank": hit_rank,
+                        "faiss_index": idx,
+                        "node_id": node_id,
+                        "text": node.text,
+                        "timestamp": node.timestamp,
+                        "topic": node.topic,
+                        "mean_energy": mean_energy,
+                        "std_profile_energy": std_profile_energy,
+                        "wasserstein_squared": float(distance),
+                        "component_sum": mean_energy + std_profile_energy,
+                    })
 
             for indices in indices_matrix:
                 for idx in indices:
                     if idx != -1 and idx in self.faiss_id_map:
                         retrieved_nids.add(self.faiss_id_map[idx])
 
-        if self.bm25:
-            sparse_query = f"{' '.join(queries_to_embed)} {' '.join(plan.target_entities)} {' '.join(plan.search_keywords)}"
-            tokenized_query = sparse_query.lower().split()
+            if faiss_hit_records:
+                self.visualize_retrieval_hits(
+                    query_text, query_labels, faiss_hit_records
+                )
 
-            doc_scores = self.bm25.get_scores(tokenized_query)
+        # if self.bm25:
+        #     sparse_query = f"{' '.join(queries_to_embed)} {' '.join(plan.target_entities)} {' '.join(plan.search_keywords)}"
+        #     tokenized_query = sparse_query.lower().split()
 
-            sparse_k = 25 if plan.difficulty_level == "open_domain" or plan.difficulty_level == 'multi_hop' else 15
-            top_bm25_indices = np.argsort(doc_scores)[::-1][:sparse_k]
+        #     doc_scores = self.bm25.get_scores(tokenized_query)
 
-            for idx in top_bm25_indices:
-                if doc_scores[idx] > 0 and idx in self.faiss_id_map:
-                    retrieved_nids.add(self.faiss_id_map[idx])
+        #     sparse_k = 25 if plan.difficulty_level == "open_domain" or plan.difficulty_level == 'multi_hop' else 15
+        #     top_bm25_indices = np.argsort(doc_scores)[::-1][:sparse_k]
+
+        #     for idx in top_bm25_indices:
+        #         if doc_scores[idx] > 0 and idx in self.faiss_id_map:
+        #             retrieved_nids.add(self.faiss_id_map[idx])
 
         context_nodes = [self.nodes_dict[nid] for nid in retrieved_nids]
         if plan.temporal_intent in ["historical", "trajectory"]:

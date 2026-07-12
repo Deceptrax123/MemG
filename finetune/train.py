@@ -51,6 +51,11 @@ parser.add_argument('--stiefel_iterations', type=int, default=4)
 parser.add_argument('--min_variance', type=float, default=1e-5)
 parser.add_argument('--max_variance', type=float, default=10.0)
 parser.add_argument('--list_ablation_presets', action='store_true')
+parser.add_argument("--visualize_every", type=int, default=0,
+                    help="Write query/passage geometry every N steps; 0 disables it.")
+parser.add_argument("--visualization_dir", default="visualizations/finetune")
+parser.add_argument("--visualization_examples", type=int, default=4)
+parser.add_argument("--visualization_dpi", type=int, default=150)
 
 args = parser.parse_args()
 args = apply_ablation_preset(args)

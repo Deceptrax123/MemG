@@ -76,6 +76,7 @@ The unit tests and metadata checks do not require a checkpoint, API key, GPU, or
 - [Python package guide](docs/python-package.md)
 - [Application and provider integration](docs/integrations.md)
 - [Authenticated Streamable HTTP](docs/http-mcp.md)
+- [Gaussian geometry visualizations](docs/visualizations.md)
 - [Deployment guide](docs/deployment.md)
 - [Architecture and development](docs/documentation.md)
 

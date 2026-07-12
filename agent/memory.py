@@ -191,54 +191,76 @@ class GeoLogicMemorySystem:
             f"  [Parallel Ingestion] Complete. Added {total_facts} total facts to Vector Store.")
 
     def retrieve_and_revise(self, query_text, top_k, run_optimization=False):
-
         query_node, retrieved_nodes = self.db.retrieve_context_bag(query_text)
-
         if not retrieved_nodes:
             return []
 
-        # with torch.no_grad():
-        #     edges = FastGeometricResolver.build_and_resolve_graph(
-        #         retrieved_nodes, overlap_threshold=0.6, topic_sim_threshold=0.75)
-
-        # if run_optimization:
-        #     print(
-        #         f"  [Agent] Running heavy 30-step Riemannian geometric optimization...")
-        #     policy = AGMRiemmannianPolicy()
-        #     retrieved_nodes = policy.execute_rollout(
-        #         query_node, retrieved_nodes, edges)
-
-        ranked_nodes = []
+        stage1 = []
         q_mu, q_V, _, q_d = query_node.get_params()
-
         with torch.no_grad():
-            for node in retrieved_nodes:
+            for candidate_index, node in enumerate(retrieved_nodes):
                 n_mu, n_V, _, n_d = node.get_params()
+                mean_energy, covariance_energy, total_energy = (
+                    GaussianMath.geometric_energy_components(
+                        q_mu, q_V, q_d, n_mu, n_V, n_d
+                    )
+                )
+                stage1.append({
+                    "node": node,
+                    "candidate_index": candidate_index,
+                    "stage1_mean_energy": mean_energy.item(),
+                    "stage1_covariance_energy": covariance_energy.item(),
+                    "stage1_total_energy": total_energy.item(),
+                })
+        stage1.sort(key=lambda item: item["stage1_total_energy"])
+        for rank, item in enumerate(stage1, start=1):
+            item["stage1_rank"] = rank
+            item["passed_stage1"] = rank <= 40
 
-                dist = GaussianMath.geometric_energy(
-                    q_mu, q_V, q_d, n_mu, n_V, n_d
-                ).item()
+        final_nodes = [item["node"] for item in stage1[:40]]
+        final_nodes.sort(key=lambda node: node.timestamp)
+        stage2 = GeometricRetriever.score_candidates(query_node, final_nodes)
+        stage2_by_node = {}
+        for rank, (total, node, mean, variance) in enumerate(stage2, start=1):
+            stage2_by_node[id(node)] = {
+                "stage2_rank": rank,
+                "stage2_total_energy": total,
+                "stage2_mean_energy": mean,
+                "stage2_variance_energy": variance,
+            }
 
-                ranked_nodes.append((dist, node))
+        selected_by_relevance = [node for _, node, _, _ in stage2[:top_k]]
+        relevance_rank = {id(node): rank for rank, node in enumerate(selected_by_relevance, start=1)}
+        retrieved_top_nodes = sorted(selected_by_relevance, key=lambda node: node.timestamp)
+        output_position = {id(node): rank for rank, node in enumerate(retrieved_top_nodes, start=1)}
 
-        ranked_nodes.sort(key=lambda x: x[0])
-
-        final_nodes = [node for dist, node in ranked_nodes[:40]]
-        final_nodes.sort(key=lambda n: n.timestamp)
-
-        retrived_top_nodes = GeometricRetriever.get_top_k_geometric(
-            query_node, final_nodes, k=max(top_k, top_k))
+        records = []
+        for item in stage1:
+            node = item["node"]
+            record = {
+                key: value for key, value in item.items() if key != "node"
+            }
+            record.update(stage2_by_node.get(id(node), {}))
+            record.update({
+                "node_id": getattr(node, "node_id", f"candidate-{item['candidate_index']}"),
+                "text": getattr(node, "text", ""),
+                "timestamp": getattr(node, "timestamp", None),
+                "topic": getattr(node, "topic", None),
+                "selected": id(node) in relevance_rank,
+                "selected_relevance_rank": relevance_rank.get(id(node)),
+                "chronological_output_position": output_position.get(id(node)),
+            })
+            records.append(record)
+        self.db.visualize_reranking(query_text, records)
 
         verified_facts = []
-        for node in retrived_top_nodes:
+        for node in retrieved_top_nodes:
             verified_facts.append({
                 "text": node.text,
                 "timestamp": node.timestamp,
-                # "status": getattr(node, "status", "UNCERTAIN"),
                 "topic": getattr(node, "topic", "Unknown"),
-                "entities": getattr(node, "entities", [])
+                "entities": getattr(node, "entities", []),
             })
-
         return verified_facts
 
     def answer_question(self, question, top_k):
