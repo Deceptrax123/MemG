@@ -11,22 +11,18 @@ EMPTY_OBJECT_SCHEMA = {"type": "object", "properties": {}}
 
 TURN_SCHEMA = {
     "type": "object",
-    "required": ["speaker", "date_time", "text"],
+    "required": ["role", "content"],
     "properties": {
-        "speaker": {"type": "string"},
-        "date_time": {"type": "string"},
-        "text": {"type": "string"},
-    },
-}
-
-ATOMIC_FACT_SCHEMA = {
-    "type": "object",
-    "required": ["fact", "topic", "entities", "timestamp"],
-    "properties": {
-        "fact": {"type": "string"},
-        "topic": {"type": "string"},
-        "entities": {"type": "array", "items": {"type": "string"}},
-        "timestamp": {"oneOf": [{"type": "string"}, {"type": "number"}]},
+        "role": {"type": "string", "enum": ["user", "assistant"]},
+        "content": {"type": "string", "minLength": 1},
+        "timestamp": {
+            "type": "string",
+            "description": "Optional ISO 8601 timestamp; current UTC time is used when omitted.",
+        },
+        "name": {
+            "type": "string",
+            "description": "Optional participant name, such as a customer or tutor name.",
+        },
     },
 }
 
@@ -72,7 +68,7 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
         },
     },
     "ingest_turns": {
-        "description": "Extract facts from dialogue turns and ingest them into memory.",
+        "description": "Use an LLM to extract memories from user/assistant chat turns and ingest them into geometric memory.",
         "inputSchema": {
             "type": "object",
             "required": ["turns"],
@@ -82,14 +78,6 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
                 "overlap_size": {"type": "integer", "minimum": 0},
                 "max_workers": {"type": "integer", "minimum": 1},
             },
-        },
-    },
-    "ingest_facts": {
-        "description": "Ingest already-extracted AtomicFact objects. Useful for deterministic tests without LLM extraction.",
-        "inputSchema": {
-            "type": "object",
-            "required": ["facts"],
-            "properties": {"facts": {"type": "array", "items": ATOMIC_FACT_SCHEMA}},
         },
     },
     "retrieve_facts": {
@@ -125,7 +113,6 @@ def bind_tool_methods(service) -> Dict[str, Callable[..., Any]]:
         "load_session": service.load_session,
         "save_session": service.save_session,
         "ingest_turns": service.ingest_turns,
-        "ingest_facts": service.ingest_facts,
         "retrieve_facts": service.retrieve_facts,
         "answer_question": service.answer_question,
     }

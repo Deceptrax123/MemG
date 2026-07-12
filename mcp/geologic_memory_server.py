@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-"""Stdio MCP entrypoint for GeoLogic memory testing and deployment.
-
-Run with:
-  python mcp/geologic_memory_server.py --weights-path /path/to/checkpoint --openai-api-key sk-...
-
-The server keeps cache files local under agent/memory_cache by default.
-"""
 
 from __future__ import annotations
 

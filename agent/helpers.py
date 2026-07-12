@@ -84,6 +84,6 @@ def load_tokenizer(args):
 
 def load_model(args, weights_path):
     model = GaussianEmbeddingTuner(args)
-    model.load_state_dict(torch.load(weights_path, map_location='cuda'))
+    model.load_state_dict(torch.load(weights_path, map_location=args.device))
 
     return model

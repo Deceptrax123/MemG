@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "geologic-memory"
+version = "0.1.0"
+description = "Geometric long-term memory with a Python API and MCP server"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name = "GeoLogic Memory contributors"}]
+license = "MIT"
+keywords = ["memory", "MCP", "retrieval", "LLM"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+]
+dependencies = [
+  "faiss-cpu>=1.7.4",
+  "instructor>=1.0",
+  "networkx>=3.0",
+  "numpy>=1.24",
+  "openai>=1.0",
+  "peft>=0.10",
+  "pydantic>=2.0",
+  "python-dateutil>=2.8",
+  "rank-bm25>=0.2.2",
+  "rapidfuzz>=3.0",
+  "sentence-transformers>=2.2",
+  "torch>=2.0",
+  "transformers>=4.38",
+]
+
+[project.optional-dependencies]
+dev = ["build>=1.2", "pytest>=8", "twine>=5"]
+
+[project.scripts]
+geologic-memory-mcp = "mcp.geologic_memory_server:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.setuptools.packages.find]
+include = ["geologic_memory", "geologic_memory.*", "mcp", "mcp.*"]
+exclude = ["agent", "agent.*", "finetune", "finetune.*"]
+

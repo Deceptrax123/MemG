@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import sys
-import traceback
 from typing import Any, Dict
 
 from .tools import bind_tool_methods, content_result, list_tools
@@ -29,6 +29,8 @@ def initialize_result() -> Dict[str, Any]:
 
 
 def handle_request(request: Dict[str, Any], methods) -> Dict[str, Any] | None:
+    if not isinstance(request, dict) or request.get("jsonrpc") != "2.0":
+        raise ValueError("Request must be a JSON-RPC 2.0 object")
     req_id = request.get("id")
     method = request.get("method")
     params = request.get("params") or {}
@@ -42,7 +44,9 @@ def handle_request(request: Dict[str, Any], methods) -> Dict[str, Any] | None:
         arguments = params.get("arguments") or {}
         if name not in methods:
             raise KeyError(f"Unknown tool: {name}")
-        result = content_result(methods[name](**arguments))
+        with contextlib.redirect_stdout(sys.stderr):
+            value = methods[name](**arguments)
+        result = content_result(value)
     elif method == "notifications/initialized":
         return None
     else:
@@ -61,11 +65,13 @@ def run_stdio_server(service) -> None:
             response = handle_request(request, methods)
             if response is None:
                 continue
+        except json.JSONDecodeError:
+            response = {"jsonrpc": "2.0", "id": None, "error": json_error("Parse error", code=-32700)}
         except Exception as exc:
             response = {
                 "jsonrpc": "2.0",
                 "id": request.get("id") if request else None,
-                "error": json_error(str(exc), data=traceback.format_exc()),
+                "error": json_error(str(exc)),
             }
 
         sys.stdout.write(json.dumps(response) + "\n")
