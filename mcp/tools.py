@@ -56,7 +56,10 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
         "inputSchema": {
             "type": "object",
             "required": ["session_id"],
-            "properties": {"session_id": {"type": "string"}},
+            "properties": {
+                "session_id": {"type": "string"},
+                "user_id": {"type": "string", "description": "Optional user namespace for isolated session storage."},
+            },
         },
     },
     "save_session": {
@@ -64,7 +67,24 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
         "inputSchema": {
             "type": "object",
             "required": ["session_id"],
-            "properties": {"session_id": {"type": "string"}},
+            "properties": {
+                "session_id": {"type": "string"},
+                "user_id": {"type": "string", "description": "Optional user namespace for isolated session storage."},
+            },
+        },
+    },
+    "load_user_memory": {
+        "description": "Load the shared cross-session memory graph for one user.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"user_id": {"type": "string", "description": "Injected from the JWT over HTTP; required for stdio callers."}},
+        },
+    },
+    "save_user_memory": {
+        "description": "Save the active graph as one user's shared cross-session memory.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"user_id": {"type": "string", "description": "Injected from the JWT over HTTP; required for stdio callers."}},
         },
     },
     "ingest_turns": {
@@ -112,6 +132,8 @@ def bind_tool_methods(service) -> Dict[str, Callable[..., Any]]:
         "clear_memory": service.clear_memory,
         "load_session": service.load_session,
         "save_session": service.save_session,
+        "load_user_memory": service.load_user_memory,
+        "save_user_memory": service.save_user_memory,
         "ingest_turns": service.ingest_turns,
         "retrieve_facts": service.retrieve_facts,
         "answer_question": service.answer_question,

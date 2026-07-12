@@ -20,6 +20,14 @@ MODEL_CHOICES = (
 
 def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="GeoLogic memory MCP server")
+    parser.add_argument("--transport", choices=("stdio", "streamable-http"), default="stdio")
+    parser.add_argument("--http-host", default="127.0.0.1")
+    parser.add_argument("--http-port", type=int, default=8000)
+    parser.add_argument("--http-path", default="/mcp")
+    parser.add_argument("--jwt-secret", default=os.getenv("MCP_JWT_SECRET"))
+    parser.add_argument("--jwt-issuer", default=os.getenv("MCP_JWT_ISSUER", "geologic-memory"))
+    parser.add_argument("--jwt-audience", default=os.getenv("MCP_JWT_AUDIENCE", "geologic-memory-mcp"))
+    parser.add_argument("--allowed-origin", action="append", default=[])
     parser.add_argument("--openai-api-key", default=None)
     parser.add_argument("--openai-base-url", default=None)
     parser.add_argument("--gen-model-name", default="gpt-4.1-mini", choices=MODEL_CHOICES)
@@ -64,6 +72,7 @@ def build_runtime_config(args: argparse.Namespace) -> SimpleNamespace:
         cuda=args.device == "cuda",
         gpu_id=args.gpu_id,
         cache_dir=args.cache_dir,
+        encryption_key=os.getenv("GEOLOGIC_MEMORY_ENCRYPTION_KEY"),
         top_k=args.top_k,
         # Geometric policy knobs expected by GeoLogicMemorySystem
         alpha_success=args.alpha_success,

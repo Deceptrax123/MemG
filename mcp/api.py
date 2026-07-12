@@ -18,6 +18,7 @@ def runtime_options(**overrides: Any) -> SimpleNamespace:
         "gen_model_name": "gpt-4.1-mini",
         "weights_path": "",
         "cache_dir": str(Path.home() / ".cache" / "geologic-memory"),
+        "encryption_key": os.getenv("GEOLOGIC_MEMORY_ENCRYPTION_KEY"),
         "embedding_model": "all-MiniLM-L6-v2",
         "device": "cuda",
         "gpu_id": 0,

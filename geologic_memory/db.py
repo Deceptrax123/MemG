@@ -2,6 +2,7 @@ import faiss
 import os
 import pickle
 import re
+from cryptography.fernet import Fernet, InvalidToken
 from geologic_memory.stiefel_node import StiefelGaussianNode
 from typing import List
 from geologic_memory.schemas import *
@@ -13,6 +14,26 @@ from rank_bm25 import BM25Okapi
 from rapidfuzz import fuzz
 import numpy as np
 from geologic_memory.openai_config import build_openai_client, openai_model_from_args
+
+
+def encrypt_session_payload(payload: bytes, key: str | None) -> bytes:
+    if not key:
+        return payload
+    try:
+        return Fernet(key.encode("ascii")).encrypt(payload)
+    except (ValueError, UnicodeEncodeError) as exc:
+        raise ValueError("GEOLOGIC_MEMORY_ENCRYPTION_KEY must be a valid Fernet key") from exc
+
+
+def decrypt_session_payload(payload: bytes, key: str | None) -> bytes:
+    if not key:
+        return payload
+    try:
+        return Fernet(key.encode("ascii")).decrypt(payload)
+    except InvalidToken as exc:
+        raise ValueError("Session file could not be authenticated or decrypted") from exc
+    except (ValueError, UnicodeEncodeError) as exc:
+        raise ValueError("GEOLOGIC_MEMORY_ENCRYPTION_KEY must be a valid Fernet key") from exc
 
 
 def effective_covariance_diagonal(Vs, lambdas, ds):
@@ -37,6 +58,7 @@ class LocalGeometricDB:
         self.encoder = encoder.to(args.device).eval()
         self.dim = self.args.output_dim
         self.cache_dir = cache_dir
+        self.encryption_key = getattr(args, "encryption_key", None)
         self.embedding_model = SentenceTransformer(
             'all-MiniLM-L6-v2').to(args.device)
         os.makedirs(cache_dir, exist_ok=True)
@@ -56,8 +78,8 @@ class LocalGeometricDB:
         self.faiss_id_map = {}
         self.counter = 0
 
-    def save_session(self, session_id: str):
-        path = self._session_path(session_id)
+    def save_session(self, session_id: str, user_id: str | None = None):
+        path = self._session_path(session_id, user_id)
 
         nodes_data = {nid: {
             'text': n.text, 'timestamp': n.timestamp, 'topic': n.topic, 'entities': n.entities, 'topic_embedding': n.topic_embedding,
@@ -74,16 +96,23 @@ class LocalGeometricDB:
             'counter': self.counter,
             'faiss_vectors': faiss_vecs
         }
-        with open(path, 'wb') as f:
-            pickle.dump(state, f)
+        payload = encrypt_session_payload(pickle.dumps(state), self.encryption_key)
+        temporary_path = f"{path}.tmp"
+        with open(temporary_path, "wb") as handle:
+            os.chmod(temporary_path, 0o600)
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary_path, path)
 
-    def load_session(self, session_id: str) -> bool:
-        path = self._session_path(session_id)
+    def load_session(self, session_id: str, user_id: str | None = None) -> bool:
+        path = self._session_path(session_id, user_id)
         if not os.path.exists(path):
             return False
 
-        with open(path, 'rb') as f:
-            state = pickle.load(f)
+        with open(path, "rb") as handle:
+            payload = handle.read()
+        state = pickle.loads(decrypt_session_payload(payload, self.encryption_key))
 
         self.faiss_id_map = state['faiss_id_map']
         self.corpus_tokens = state.get('corpus_tokens', [])
@@ -105,10 +134,21 @@ class LocalGeometricDB:
 
         return True
 
-    def _session_path(self, session_id: str) -> str:
-        if not isinstance(session_id, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}", session_id):
-            raise ValueError("session_id must be 1-128 letters, numbers, dots, dashes, or underscores")
-        return os.path.join(self.cache_dir, f"{session_id}.pkl")
+    def _session_path(self, session_id: str, user_id: str | None = None) -> str:
+        session_id = self._safe_storage_id(session_id, "session_id")
+        if user_id is None:
+            return os.path.join(self.cache_dir, f"{session_id}.pkl")
+        user_id = self._safe_storage_id(user_id, "user_id")
+        user_dir = os.path.join(self.cache_dir, "users", user_id)
+        os.makedirs(user_dir, mode=0o700, exist_ok=True)
+        return os.path.join(user_dir, f"{session_id}.pkl")
+
+
+    @staticmethod
+    def _safe_storage_id(value: str, field: str) -> str:
+        if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}", value):
+            raise ValueError(f"{field} must be 1-128 letters, numbers, dots, dashes, or underscores")
+        return value
 
     def ingest_facts(self, extracted_facts: List['AtomicFact']):
         if not extracted_facts:

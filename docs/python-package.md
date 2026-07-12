@@ -40,3 +40,5 @@ Use `ingest_turns()` to send `role`/`content` user and assistant messages throug
 
 All public service methods return dictionaries suitable for JSON serialization.
 
+See [application and provider integration](integrations.md) for the retrieve-generate-ingest lifecycle, provider adapters, concurrency guidance, and tenant isolation. See the [deployment guide](deployment.md) for production runtime patterns.
+

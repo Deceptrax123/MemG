@@ -1,6 +1,4 @@
 interface:
   display_name: "GeoLogic Memory"
-  short_description: "Test and deploy local memory MCP"
-  default_prompt: "Use $geologic-memory to connect the GeoLogic memory MCP server and retrieve facts from local memory."
-policy:
-  allow_implicit_invocation: true
+  short_description: "Operate secure cross-session memory MCP"
+  default_prompt: "Use $geologic-memory to deploy or operate authenticated user-scoped memory and verify retrieval."

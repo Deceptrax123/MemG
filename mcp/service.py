@@ -19,6 +19,7 @@ class GeoLogicMemoryService:
         self.system = None
         self.tokenizer = None
         self.encoder = None
+        self.active_user_id = None
 
     def _require_system(self):
         if self.system is not None:
@@ -74,6 +75,7 @@ class GeoLogicMemoryService:
             "device": self.config.device,
             "openai_model": self.config.gen_model_name,
             "openai_api_key_configured": bool(self.config.openai_api_key),
+            "active_user_id": self.active_user_id,
         }
 
     def clear_memory(self):
@@ -81,15 +83,27 @@ class GeoLogicMemoryService:
         system.db.clear()
         return {"cleared": True, "nodes": len(system.db.nodes_dict)}
 
-    def load_session(self, session_id: str):
+    def load_session(self, session_id: str, user_id: Optional[str] = None):
         system = self._require_system()
-        loaded = system.db.load_session(session_id)
-        return {"loaded": loaded, "session_id": session_id, "nodes": len(system.db.nodes_dict)}
+        loaded = system.db.load_session(session_id, user_id=user_id)
+        return {"loaded": loaded, "session_id": session_id, "user_id": user_id, "nodes": len(system.db.nodes_dict)}
 
-    def save_session(self, session_id: str):
+    def save_session(self, session_id: str, user_id: Optional[str] = None):
         system = self._require_system()
-        system.db.save_session(session_id)
-        return {"saved": True, "session_id": session_id, "nodes": len(system.db.nodes_dict)}
+        system.db.save_session(session_id, user_id=user_id)
+        return {"saved": True, "session_id": session_id, "user_id": user_id, "nodes": len(system.db.nodes_dict)}
+
+    def load_user_memory(self, user_id: str):
+        system = self._require_system()
+        system.db.clear()
+        loaded = system.db.load_session("shared-memory", user_id=user_id)
+        self.active_user_id = user_id
+        return {"loaded": loaded, "session_id": "shared-memory", "user_id": user_id, "nodes": len(system.db.nodes_dict)}
+
+    def save_user_memory(self, user_id: str):
+        if self.active_user_id != user_id:
+            raise RuntimeError("Load this user's memory before saving it")
+        return self.save_session("shared-memory", user_id=user_id)
 
     def ingest_turns(
         self,

@@ -18,12 +18,14 @@ classifiers = [
 ]
 dependencies = [
   "faiss-cpu>=1.7.4",
+  "cryptography>=42",
   "instructor>=1.0",
   "networkx>=3.0",
   "numpy>=1.24",
   "openai>=1.0",
   "peft>=0.10",
   "pydantic>=2.0",
+  "PyJWT>=2.8",
   "python-dateutil>=2.8",
   "rank-bm25>=0.2.2",
   "rapidfuzz>=3.0",
@@ -37,6 +39,7 @@ dev = ["build>=1.2", "pytest>=8", "twine>=5"]
 
 [project.scripts]
 geologic-memory-mcp = "mcp.geologic_memory_server:main"
+geologic-memory-token = "mcp.token:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
