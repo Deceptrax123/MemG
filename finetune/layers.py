@@ -50,8 +50,9 @@ class MLP_Gaussian_Stiefel_Sigma(nn.Module):
         self.stiefel_iterations = stiefel_iterations
         self.min_variance = min_variance
         self.max_variance = max_variance
+        if self.eps <= 0:
+            raise ValueError("eps must be positive for a positive-definite covariance")
 
-        self.d_proj = nn.Linear(hidden_size, hidden_size)
         self.lambda_proj = nn.Linear(hidden_size, rank)
 
         self.A_proj = nn.Linear(hidden_size, hidden_size*rank)
@@ -84,7 +85,9 @@ class MLP_Gaussian_Stiefel_Sigma(nn.Module):
         return V, lambdas
 
     def forward(self, z):
-        d = self._positive(self.d_proj(z))
+        # D is deliberately fixed rather than learned:
+        # Sigma = V diag(lambda) V^T + eps I.
+        d = torch.full_like(z, self.eps)
         learned_lambdas = self._positive(self.lambda_proj(z))
 
         V_raw = torch.tanh(self.A_proj(z).view(

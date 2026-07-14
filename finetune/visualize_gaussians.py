@@ -21,6 +21,13 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+
+ROLE_COLORS = {
+    "query": "#4c78a8",
+    "positive": "#54a24b",
+    "negative": "#e45756",
+}
+
 def _numpy(value):
     if isinstance(value, torch.Tensor):
         value = value.detach().float().cpu().numpy()
@@ -73,6 +80,31 @@ def ellipse_points(center, covariance, standard_deviations=2.0, points=180):
     return _numpy(center)[:, None] + transform @ circle
 
 
+def gaussian_distribution_values(means, lambdas, frames, diagonal_matrices):
+    """Return flattened values used for W&B Gaussian-distribution histograms."""
+    means, lambdas, frames, diagonal_matrices = map(
+        _numpy, (means, lambdas, frames, diagonal_matrices)
+    )
+    diagonal = (
+        np.diagonal(diagonal_matrices, axis1=-2, axis2=-1)
+        if diagonal_matrices.ndim == 3
+        else diagonal_matrices
+    )
+    marginal_variance = diagonal + np.sum(
+        frames ** 2 * lambdas[:, None, :], axis=-1
+    )
+    marginal_variance = np.clip(marginal_variance, 0.0, None)
+    return {
+        "mu_components": means.reshape(-1),
+        "mu_norms": np.linalg.norm(means, axis=1),
+        "sigma_marginal_variances": marginal_variance.reshape(-1),
+        "sigma_marginal_standard_deviations": np.sqrt(
+            marginal_variance
+        ).reshape(-1),
+        "low_rank_lambdas": lambdas.reshape(-1),
+    }
+
+
 def visualize_projection_batch(
     output_path,
     *,
@@ -81,6 +113,7 @@ def visualize_projection_batch(
     lambdas,
     frames,
     diagonal_matrices,
+    groups=None,
     title="Gaussian embedding diagnostics",
     dpi=150,
 ):
@@ -94,22 +127,40 @@ def visualize_projection_batch(
     )
     count = min(len(labels), len(means), len(lambdas), len(frames), len(diagonal_matrices))
     labels = list(labels[:count])
+    groups = list(groups[:count]) if groups is not None else [None] * count
     means, lambdas = means[:count], lambdas[:count]
     frames, diagonal_matrices = frames[:count], diagonal_matrices[:count]
     basis = shared_basis(means, frames)
     projected_means = means @ basis
 
     fig, axes = plt.subplots(2, 2, figsize=(14, 11), constrained_layout=True)
-    colors = plt.cm.tab10(np.linspace(0, 1, max(count, 1)))
+    fallback_colors = plt.cm.tab10(np.linspace(0, 1, max(count, 1)))
+    colors = [
+        ROLE_COLORS.get(group, fallback_colors[index])
+        for index, group in enumerate(groups)
+    ]
     diagnostics = {"title": title, "items": []}
+    seen_groups = set()
 
     for index, label in enumerate(labels):
         covariance_2d = covariance_in_basis(
             frames[index], lambdas[index], diagonal_matrices[index], basis
         )
         ellipse = ellipse_points(projected_means[index], covariance_2d)
-        axes[0, 0].plot(ellipse[0], ellipse[1], color=colors[index], linewidth=2)
-        axes[0, 0].scatter(*projected_means[index], color=colors[index], s=45)
+        group_label = (
+            groups[index].title()
+            if groups[index] is not None and groups[index] not in seen_groups
+            else None
+        )
+        seen_groups.add(groups[index])
+        axes[0, 0].plot(
+            ellipse[0], ellipse[1], color=colors[index], linewidth=2,
+            alpha=0.8, label=group_label,
+        )
+        axes[0, 0].scatter(
+            *projected_means[index], color=colors[index], edgecolor="black",
+            linewidth=0.4, s=45,
+        )
         axes[0, 0].annotate(label, projected_means[index], fontsize=8)
 
         axes[0, 1].plot(
@@ -131,6 +182,7 @@ def visualize_projection_batch(
         error, gram = orthogonality_error(frames[index])
         diagnostics["items"].append({
             "label": label,
+            "group": groups[index],
             "mean_norm": float(np.linalg.norm(means[index])),
             "lambda_min": float(lambdas[index].min()),
             "lambda_mean": float(lambdas[index].mean()),
@@ -145,6 +197,8 @@ def visualize_projection_batch(
     axes[0, 0].set_ylabel("shared component 2")
     axes[0, 0].grid(alpha=0.2)
     axes[0, 0].set_aspect("equal", adjustable="datalim")
+    if any(group is not None for group in groups):
+        axes[0, 0].legend(title="Dataset role")
 
     axes[0, 1].set_title("Learned low-rank eigenvalues")
     axes[0, 1].set_xlabel("sorted rank")
@@ -160,7 +214,7 @@ def visualize_projection_batch(
     axes[1, 0].set_aspect("equal", adjustable="datalim")
 
     errors = [item["orthogonality_error_fro"] for item in diagnostics["items"]]
-    axes[1, 1].bar(np.arange(count), errors, color=colors[:count])
+    axes[1, 1].bar(np.arange(count), errors, color=colors)
     axes[1, 1].set_xticks(np.arange(count), labels, rotation=35, ha="right", fontsize=8)
     axes[1, 1].set_title("Orthonormal-frame error ‖VᵀV − I‖F")
     axes[1, 1].set_ylabel("Frobenius error")

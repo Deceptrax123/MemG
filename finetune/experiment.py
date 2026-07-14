@@ -7,10 +7,47 @@ from model import GaussianEmbeddingTuner
 from torch.optim import AdamW
 import gc
 import wandb
+import numpy as np
 
 
 os.environ['WANDB_MODE'] = 'online'
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
+
+
+def _wandb_histogram(values, max_values=100_000):
+    """Build a bounded-size W&B histogram from a tensor or NumPy array."""
+    if isinstance(values, torch.Tensor):
+        values = values.detach().float().cpu().numpy()
+    values = np.asarray(values).reshape(-1)
+    values = values[np.isfinite(values)]
+    if len(values) > max_values:
+        stride = int(np.ceil(len(values) / max_values))
+        values = values[::stride][:max_values]
+    return wandb.Histogram(values)
+
+
+def _wandb_gaussian_distribution_logs(
+    role, means, lambdas, frames, diagonal_matrices
+):
+    from visualize_gaussians import gaussian_distribution_values
+
+    values = gaussian_distribution_values(
+        means, lambdas, frames, diagonal_matrices
+    )
+    prefix = f"Gaussian distributions/{role}"
+    return {
+        f"{prefix}/mu components": _wandb_histogram(values["mu_components"]),
+        f"{prefix}/mu norms": _wandb_histogram(values["mu_norms"]),
+        f"{prefix}/sigma marginal variances": _wandb_histogram(
+            values["sigma_marginal_variances"]
+        ),
+        f"{prefix}/sigma marginal standard deviations": _wandb_histogram(
+            values["sigma_marginal_standard_deviations"]
+        ),
+        f"{prefix}/low-rank lambdas": _wandb_histogram(
+            values["low_rank_lambdas"]
+        ),
+    }
 
 
 class Experiment(object):
@@ -133,20 +170,75 @@ class Experiment(object):
                 self.optimizer.zero_grad()
 
             self.scheduler.step()
+            visualization_logs = {}
             visualize_every = getattr(self.args, "visualize_every", 0)
-            if visualize_every > 0 and (step + 1) % visualize_every == 0:
+            wandb_plot_every = getattr(self.args, "wandb_plot_every", 0)
+            local_plot_due = (
+                visualize_every > 0 and (step + 1) % visualize_every == 0
+            )
+            wandb_plot_due = (
+                self.args.wandb == 1
+                and wandb_plot_every > 0
+                and (step + 1) % wandb_plot_every == 0
+            )
+            if local_plot_due or wandb_plot_due:
                 try:
                     from visualize_gaussians import visualize_projection_batch
+
+                    sample_count = min(
+                        getattr(self.args, "visualization_examples", 4),
+                        len(queries),
+                        len(positives),
+                    )
+                    pair_indices = torch.randperm(len(queries))[
+                        :sample_count
+                    ].tolist()
+                    sampled_queries = [queries[index] for index in pair_indices]
+                    sampled_positives = [positives[index] for index in pair_indices]
+                    if negatives_list and isinstance(
+                        negatives_list[0], (tuple, list)
+                    ):
+                        negative_pool = [
+                            negative
+                            for query_negatives in negatives_list
+                            for negative in query_negatives
+                        ]
+                    else:
+                        negative_pool = list(negatives_list)
+                    negative_count = min(sample_count, len(negative_pool))
+                    negative_indices = torch.randperm(len(negative_pool))[
+                        :negative_count
+                    ].tolist()
+                    sampled_negatives = [
+                        negative_pool[index] for index in negative_indices
+                    ]
+                    diagnostic_texts = [
+                        *sampled_queries,
+                        *sampled_positives,
+                        *sampled_negatives,
+                    ]
+                    diagnostic_inputs = self.tokenizer(
+                        diagnostic_texts,
+                        padding=True,
+                        truncation=True,
+                        return_tensors='pt',
+                        max_length=self.max_len,
+                    ).to(self.args.device)
                     self.model.eval()
                     with torch.no_grad():
-                        q_mu, q_lambda, q_frame, q_diag, _ = self.model.gaussian_projection(encode_query)
-                        p_mu, p_lambda, p_frame, p_diag, _ = self.model.gaussian_projection(encode_positives)
-                    sample_count = min(getattr(self.args, "visualization_examples", 4), len(q_mu), len(p_mu))
-                    means = torch.cat([q_mu[:sample_count], p_mu[:sample_count]])
-                    eigenvalues = torch.cat([q_lambda[:sample_count], p_lambda[:sample_count]])
-                    frames = torch.cat([q_frame[:sample_count], p_frame[:sample_count]])
-                    diagonals = torch.cat([q_diag[:sample_count], p_diag[:sample_count]])
-                    labels = [f"query {i + 1}" for i in range(sample_count)] + [f"passage {i + 1}" for i in range(sample_count)]
+                        means, eigenvalues, frames, diagonals, _ = (
+                            self.model.gaussian_projection(diagnostic_inputs)
+                        )
+                    labels = (
+                        [f"query {i + 1}" for i in range(sample_count)]
+                        + [f"positive {i + 1}" for i in range(sample_count)]
+                        + [f"negative {i + 1}" for i in range(negative_count)]
+                    )
+                    groups = (
+                        ["query"] * sample_count
+                        + ["positive"] * sample_count
+                        + ["negative"] * negative_count
+                    )
                     output = os.path.join(
                         getattr(self.args, "visualization_dir", "visualizations/finetune"),
                         f"step_{step + 1:07d}.png",
@@ -154,10 +246,43 @@ class Experiment(object):
                     visualize_projection_batch(
                         output, labels=labels, means=means, lambdas=eigenvalues,
                         frames=frames, diagonal_matrices=diagonals,
+                        groups=groups,
                         title=f"Training geometry at step {step + 1}",
                         dpi=getattr(self.args, "visualization_dpi", 150),
                     )
                     print(f"Wrote training geometry to {output}")
+                    if wandb_plot_due:
+                        visualization_logs[
+                            "Gaussian geometry/query-positive-negative ellipses"
+                        ] = wandb.Image(
+                            output,
+                            caption=(
+                                f"Random dataset samples at step {step + 1}; "
+                                "ellipses show projected 2σ learned covariance."
+                            ),
+                        )
+                        role_offsets = {
+                            "Query": (0, sample_count),
+                            "Positive passage": (
+                                sample_count, 2 * sample_count
+                            ),
+                            "Negative passage": (
+                                2 * sample_count,
+                                2 * sample_count + negative_count,
+                            ),
+                        }
+                        for role, (start, end) in role_offsets.items():
+                            if end > start:
+                                visualization_logs.update(
+                                    _wandb_gaussian_distribution_logs(
+                                        role,
+                                        means[start:end],
+                                        eigenvalues[start:end],
+                                        frames[start:end],
+                                        diagonals[start:end],
+                                    )
+                                )
+                    del diagnostic_inputs
                 except Exception as exc:
                     print(f"Visualization failed at step {step + 1}: {exc}")
             del encode_query, encode_negatives, encode_positives
@@ -174,7 +299,7 @@ class Experiment(object):
                 }
 
                 geometric_logs = self.evaluate(qv, ql, qd, pv, pl, pd)
-                final_logs = logs | geometric_logs
+                final_logs = logs | geometric_logs | visualization_logs
 
                 if self.args.wandb == 1:
                     wandb.log(final_logs)

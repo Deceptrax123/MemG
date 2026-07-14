@@ -2,7 +2,10 @@ import torch
 import numpy as np
 import torch.nn as nn
 from transformers import BertConfig, BertModel, BertTokenizer, AutoModel, AutoTokenizer
-from finetune.layers import *
+try:
+    from finetune.layers import *
+except ModuleNotFoundError:
+    from layers import *
 import torch.nn.functional as F
 from peft import LoraConfig, TaskType, get_peft_model
 
@@ -32,6 +35,17 @@ class GaussianEmbeddingTuner(nn.Module):
             min_variance=getattr(self.args, 'min_variance', 1e-5),
             max_variance=getattr(self.args, 'max_variance', 10.0),
         )
+
+    def load_state_dict(self, state_dict, strict=True, assign=False):
+        legacy_keys = {
+            'decomposed_covariance.d_proj.weight',
+            'decomposed_covariance.d_proj.bias',
+        }
+        if any(key in state_dict for key in legacy_keys):
+            state_dict = state_dict.copy()
+            for key in legacy_keys:
+                state_dict.pop(key, None)
+        return super().load_state_dict(state_dict, strict=strict, assign=assign)
 
     def __load_pretrained__(self):
 
@@ -223,21 +237,23 @@ class GaussianEmbeddingTuner(nn.Module):
 
     def exact_bures_wasserstein(self, mu_q, V_q, lambdas_q, d_q, mu_p, V_p, lambdas_p, d_p):
         batch_size, dim, rank = V_q.size()
-        eps = 1e-6
+        eps = self.args.gaussian_eps
 
         mean_dist = torch.sum((mu_q - mu_p)**2, dim=-1)
 
         trace_q = torch.sum(lambdas_q, dim=-1) + torch.sum(d_q, dim=-1)
         trace_p = torch.sum(lambdas_p, dim=-1) + torch.sum(d_p, dim=-1)
 
-        diag_cross_term = torch.sum(torch.sqrt(d_q * d_p + eps), dim=-1)
+        diag_cross_term = torch.sum(
+            torch.sqrt(torch.clamp(d_q * d_p, min=eps * eps)), dim=-1
+        )
 
         Vq_T_Vp = torch.bmm(V_q.transpose(1, 2), V_p)
 
         sqrt_lambdas_q = torch.sqrt(
-            lambdas_q + eps).unsqueeze(-1)
+            torch.clamp(lambdas_q, min=eps)).unsqueeze(-1)
         sqrt_lambdas_p = torch.sqrt(
-            lambdas_p + eps).unsqueeze(1)
+            torch.clamp(lambdas_p, min=eps)).unsqueeze(1)
 
         scaled_Vq_T_Vp = sqrt_lambdas_q * Vq_T_Vp * sqrt_lambdas_p
 
@@ -250,19 +266,15 @@ class GaussianEmbeddingTuner(nn.Module):
 
         return torch.clamp(w2_dist, min=0.0)
 
-    def variance_anti_collapse_regularizer(self, lambdas, d):
+    def lambda_anti_collapse_regularizer(self, lambdas):
 
         target_min_var = 0.5
 
-        d_deficit = F.relu(target_min_var - d)
         lambda_deficit = F.relu(target_min_var - lambdas)
 
-        loss_collapse_d = torch.mean(d_deficit ** 2)
         loss_collapse_lambda = torch.mean(lambda_deficit ** 2)
 
-        total_collapse_loss = loss_collapse_d + loss_collapse_lambda
-
-        return total_collapse_loss
+        return loss_collapse_lambda
 
     def eigenvalue_spread_regularizer(self, lambdas):
         lambda_variance = torch.var(lambdas, dim=-1, unbiased=False)
@@ -346,12 +358,9 @@ class GaussianEmbeddingTuner(nn.Module):
             query_v, q_lambdas, query_d_matrix, passage_v, p_lambdas, passage_d_matrix
         )
 
-        var_loss_q = self.variance_anti_collapse_regularizer(
-            q_lambdas, query_d_matrix)
-        var_loss_p = self.variance_anti_collapse_regularizer(
-            p_lambdas, passage_d_matrix)
-        var_loss_n = self.variance_anti_collapse_regularizer(
-            n_lambdas, negative_d_matrix)
+        var_loss_q = self.lambda_anti_collapse_regularizer(q_lambdas)
+        var_loss_p = self.lambda_anti_collapse_regularizer(p_lambdas)
+        var_loss_n = self.lambda_anti_collapse_regularizer(n_lambdas)
 
         variance_loss = (var_loss_q + var_loss_p + var_loss_n) / 3.0
 

@@ -1,0 +1,177 @@
+{
+  "dataset": "arxiv_topic_abstracts",
+  "description": "Small, sourced paper set for testing whether finetuned Gaussian text representations organize broad scientific concepts into topic neighborhoods.",
+  "retrieved_at": "2026-07-14",
+  "source": {
+    "provider": "arXiv",
+    "api": "https://export.arxiv.org/api/query",
+    "abstract_form": "Concise paraphrase of the arXiv abstract, not a verbatim copy.",
+    "queries": [
+      "cat:quant-ph",
+      "cat:physics.chem-ph",
+      "cat:q-bio.BM",
+      "cat:q-bio.GN"
+    ]
+  },
+  "topics": [
+    {
+      "topic": "physics",
+      "display_name": "Physics",
+      "keywords": ["quantum dynamics", "entanglement", "quantum fields", "wave functions"],
+      "papers": [
+        {
+          "arxiv_id": "2607.09663",
+          "title": "Phase-switchable nonreciprocal entanglement via magnon squeezing in ring-cavity optomagnomechanics",
+          "authors": ["Z. Imara", "A. El Allati", "A. Belfakir", "K. El Anouz", "I. P. Castillo"],
+          "published": "2026-07-10",
+          "primary_category": "quant-ph",
+          "categories": ["quant-ph"],
+          "url": "https://arxiv.org/abs/2607.09663",
+          "abstract": "A theoretical optomagnomechanical ring-cavity scheme uses phase-controlled magnon squeezing to switch bipartite and tripartite entanglement. Reversing the squeezing phase changes effective detuning and damping contributions, producing a tunable nonreciprocal entanglement response within stable operating regions."
+        },
+        {
+          "arxiv_id": "2607.09660",
+          "title": "Nonlinear particle detectors across the Rindler firewall",
+          "authors": ["Matheus H. Zambianco", "Eduardo Martín-Martínez"],
+          "published": "2026-07-10",
+          "primary_category": "quant-ph",
+          "categories": ["quant-ph", "gr-qc", "hep-th"],
+          "url": "https://arxiv.org/abs/2607.09660",
+          "abstract": "The work studies Unruh-DeWitt particle detectors coupled nonlinearly to quantum-field observables while crossing an idealized Rindler firewall. Distributional analysis finds divergences for quadratic momentum and local-energy-density couplings, attributing the pathology to abruptly severed field correlations at the horizon."
+        },
+        {
+          "arxiv_id": "2607.09651",
+          "title": "Local Determinacy of Quantum Master Equations and a Mechanical Interpretation of the Multi-Mode Jaynes-Cummings and Central Spin Models",
+          "authors": ["Jaeha Lee", "Miku Ishizaki"],
+          "published": "2026-07-10",
+          "primary_category": "quant-ph",
+          "categories": ["quant-ph"],
+          "url": "https://arxiv.org/abs/2607.09651",
+          "abstract": "A coordinate-free formulation of quantum master equations describes state evolution through local behavior at each instant, including beyond-Markovian dynamics. Exact analyses of multi-mode Jaynes-Cummings and central-spin models illustrate how this local viewpoint gives a mechanical interpretation of open-system evolution."
+        },
+        {
+          "arxiv_id": "2607.09643",
+          "title": "Optimality of the free quantum evolution: the general case with nodes",
+          "authors": ["Laura M. Morato"],
+          "published": "2026-07-10",
+          "primary_category": "quant-ph",
+          "categories": ["quant-ph"],
+          "url": "https://arxiv.org/abs/2607.09643",
+          "abstract": "The paper studies free wave-function evolution when initial and final probability moduli are fixed and nodes may occur. An optimal-transport-related functional indicates local minimality when nodes are present and global minimality without nodes, suggesting that nodal free evolution is intrinsically less stable."
+        },
+        {"arxiv_id":"2607.11847","title":"Optimal tomography of bosonic and fermionic Gaussian states","authors":["Senrui Chen","Marco Fanizza","Filippo Girardi","Ludovico Lami","Francesco Anna Mele","Michael Walter","Freek Witteveen"],"published":"2026-07-13","primary_category":"quant-ph","categories":["quant-ph","cond-mat.other","math-ph"],"url":"https://arxiv.org/abs/2607.11847","abstract":"The paper determines the sample complexity of learning bosonic and fermionic Gaussian quantum states. Representation-theoretic tools show that accurate classical descriptions require a number of copies scaling quadratically with mode count, for pure or mixed states and without imposing an energy bound."},
+        {"arxiv_id":"2607.11846","title":"Optimal operating temperature for industry-compatible silicon spin quantum computing: colder is not necessarily better","authors":["Paul Steinacker et al."],"published":"2026-07-13","primary_category":"quant-ph","categories":["quant-ph","cond-mat.mes-hall"],"url":"https://arxiv.org/abs/2607.11846","abstract":"Temperature-dependent gate-set tomography on silicon spin qubits is combined with a system power model. The study identifies a finite operating-temperature optimum balancing cryogenic cooling against coherence loss and quantum-error-correction overhead, with a prominent device crossover near one kelvin."},
+        {"arxiv_id":"2607.11843","title":"Input-Aware Dynamic Backdoor Attack Against Quantum Neural Networks","authors":["Junrui Zhang","Zemin Chen","Lusi Li","Mohammad Ghasemigol","Daniel Takabi","Rui Ning"],"published":"2026-07-13","primary_category":"quant-ph","categories":["quant-ph","cs.LG"],"url":"https://arxiv.org/abs/2607.11843","abstract":"Q-DIBA trains an input-dependent trigger generator with a quantum neural network and supervises attacks using contrasts between ensemble density matrices before measurement. Experiments report effective, input-specific backdoors that remain difficult to detect or remove across several quantum-network architectures."},
+        {"arxiv_id":"2607.11831","title":"Multiparameter Quantum Metrology in Molecular Dimers","authors":["Omar Bachain","Mohamed Amazioug","Rachid Ahl Laamara"],"published":"2026-07-13","primary_category":"quant-ph","categories":["quant-ph"],"url":"https://arxiv.org/abs/2607.11831","abstract":"Quantum Fisher information is used to study simultaneous estimation of temperature and detuning in a dipole-coupled molecular dimer. Joint estimation is most advantageous near resonance and at low temperature, where coherence improves precision, and weakens as detuning or thermal noise grows."},
+        {"arxiv_id":"2607.11829","title":"Quantum probe advantage in learning many-body systems","authors":["Wenzheng Dong","Andrew G. Green","Vlatko Vedral","Jinzhao Sun"],"published":"2026-07-13","primary_category":"quant-ph","categories":["quant-ph","cond-mat.str-el","physics.atom-ph"],"url":"https://arxiv.org/abs/2607.11829","abstract":"Coherently controlled quantum probes are shown to access many-body information beyond conventional response functions. Probe dynamics encode anticommutator and mixed-order correlations, while entangled probes can reveal quantities such as entanglement entropy with resources tied to correlation complexity rather than total system size."},
+        {"arxiv_id":"2607.11823","title":"Multiparameter Quantum Estimation in a Raman-Coupled Two-Qubit System","authors":["Omar Bachain","Mohamed Amazioug","Rachid Ahl Laamara"],"published":"2026-07-13","primary_category":"quant-ph","categories":["quant-ph"],"url":"https://arxiv.org/abs/2607.11823","abstract":"Analytical quantum Fisher information describes joint estimation of temperature and Raman coupling in a thermal two-qubit system. The results identify optimal thermometry windows and low-temperature weak-coupling regimes where simultaneous parameter estimation can outperform separate strategies."}
+      ]
+    },
+    {
+      "topic": "chemistry",
+      "display_name": "Chemistry",
+      "keywords": ["molecular dynamics", "polymers", "reaction kinetics", "molecular materials"],
+      "papers": [
+        {
+          "arxiv_id": "2607.09592",
+          "title": "A Semiclassical Gaussian Wavepacket Method for Non-Adiabatic Molecular Dynamics",
+          "authors": ["Lorenzo Bocchi", "Jia-Xi Zeng", "Michele Ceotto"],
+          "published": "2026-07-10",
+          "primary_category": "physics.chem-ph",
+          "categories": ["physics.chem-ph", "quant-ph"],
+          "url": "https://arxiv.org/abs/2607.09592",
+          "abstract": "Two semiclassical non-adiabatic dynamics methods propagate coupled thawed Gaussian wavepackets on separate molecular potential-energy surfaces. Tests on electron-transfer-like oscillators and a photodissociation model show that a variational formulation captures non-adiabatic behavior using only two classical trajectories."
+        },
+        {
+          "arxiv_id": "2607.09561",
+          "title": "Delayed Arm Retraction Controls the Nonlinear Oscillatory Response of Long-Chain-Branched Polymer Melts",
+          "authors": ["Dario Nichetti", "Alessio Zaccone"],
+          "published": "2026-07-10",
+          "primary_category": "cond-mat.soft",
+          "categories": ["cond-mat.soft", "cond-mat.dis-nn", "cond-mat.mtrl-sci", "physics.chem-ph"],
+          "url": "https://arxiv.org/abs/2607.09561",
+          "abstract": "A molecular tube theory explains nonlinear oscillatory rheology in long-chain-branched polymer melts. Competition between backbone orientation, branch-point force transmission, and delayed arm retraction produces a peak and subsequent decay in nonlinear response, linking measured harmonics to polymer architecture."
+        },
+        {
+          "arxiv_id": "2607.09525",
+          "title": "Chemical Frequency Combs in Reaction-Diffusion Oscillators",
+          "authors": ["Krishnesh Krishnakumar Nair", "Madhurendra Mishra", "Zhen Qi", "Adarsh Ganesan"],
+          "published": "2026-07-10",
+          "primary_category": "nlin.PS",
+          "categories": ["nlin.PS", "physics.chem-ph"],
+          "url": "https://arxiv.org/abs/2607.09525",
+          "abstract": "Reaction-diffusion oscillators are shown to generate evenly spaced chemical frequency combs. Brusselator analysis and simulations identify autocatalytic nonlinearities as the harmonic source, while experiments with the Belousov-Zhabotinsky reaction reproduce the predicted weakening ladder of harmonics."
+        },
+        {
+          "arxiv_id": "2607.09396",
+          "title": "Quantum phases in endofullerene zigzag chains",
+          "authors": ["Tobias Serwatka", "Muhammad Shaeer Moeed", "Roger G. Melko", "Pierre-Nicholas Roy"],
+          "published": "2026-07-10",
+          "primary_category": "physics.chem-ph",
+          "categories": ["physics.chem-ph", "cond-mat.mes-hall", "cond-mat.quant-gas", "cond-mat.stat-mech"],
+          "url": "https://arxiv.org/abs/2607.09396",
+          "abstract": "Density-matrix renormalization calculations examine dipolar molecules confined in bent endofullerene chains. Chain geometry and longer-range interactions control ferroelectric or antiferroelectric ordering for LiF and water isotopologues, suggesting tunable dipole phases in engineered molecular layers."
+        },
+        {"arxiv_id":"2607.11217","title":"Quantum Multiscale Modeling: A Hierarchy of Algorithms for Complex Chemical Systems","authors":["Seenivasan Hariharan","Kareljan Schoutens","Sachin Kinge","Lucas Visscher"],"published":"2026-07-13","primary_category":"quant-ph","categories":["quant-ph","physics.chem-ph"],"url":"https://arxiv.org/abs/2607.11217","abstract":"A roadmap connects quantum algorithms across electronic structure, molecular dynamics, mesoscopic kinetics, and continuum reactor models. It argues that useful multiscale chemical speedups depend on state preparation, conditioning, readout, memory, and how information is transferred between algorithmic scales."},
+        {"arxiv_id":"2607.10887","title":"Transferable Implicit Solvent Machine Learning Potential for Drugs and Proteins Approaching Ab Initio Accuracy","authors":["Jan Eckwert","Julija Zavadlav"],"published":"2026-07-12","primary_category":"physics.chem-ph","categories":["physics.chem-ph","cs.LG","q-bio.BM"],"url":"https://arxiv.org/abs/2607.10887","abstract":"TWIN is an equivariant implicit-water machine-learning potential trained on ab initio and experimental targets. It transfers across drug-like molecules, peptides, and proteins, approaches explicit-solvent density-functional accuracy, and substantially reduces evaluation cost for biomolecular simulations."},
+        {"arxiv_id":"2607.10865","title":"Dimensional and Spin Interpolation for the O(n) Model: From Exact Anchors to RG-Improved Critical Exponents","authors":["Kumar Ghosh"],"published":"2026-07-12","primary_category":"cond-mat.stat-mech","categories":["cond-mat.stat-mech","math-ph","physics.chem-ph"],"url":"https://arxiv.org/abs/2607.10865","abstract":"A two-axis interpolation framework treats dimension and spin-component count as continuous parameters linking exact limits of the O(n) family. Comparisons with Monte Carlo and conformal-bootstrap values clarify which critical observables admit reliable anchored interpolation."},
+        {"arxiv_id":"2607.10854","title":"Autonomous Transition State Search with Soft Actor-Critic Reinforcement Learning","authors":["Utham Suresh","Konstantinos D. Vogiatzis"],"published":"2026-07-12","primary_category":"physics.chem-ph","categories":["physics.chem-ph"],"url":"https://arxiv.org/abs/2607.10854","abstract":"A soft actor-critic agent searches molecular potential-energy surfaces for transition states using local energy and curvature information. By proposing structural changes in internal coordinates, it locates saddle geometries without labeled trajectories or prescribed reaction pathways."},
+        {"arxiv_id":"2607.10847","title":"Thawed Gaussian Ehrenfest dynamics","authors":["Jiří J. L. Vaníček"],"published":"2026-07-12","primary_category":"physics.chem-ph","categories":["physics.chem-ph","quant-ph"],"url":"https://arxiv.org/abs/2607.10847","abstract":"Thawed Gaussian Ehrenfest dynamics unifies mixed quantum-classical electronic motion with semiclassical Gaussian nuclear dynamics. A variational derivation yields a family of methods, identifies classical and uncoupled limits, and supplies geometric integrators for nonadiabatic molecular simulation."},
+        {"arxiv_id":"2607.10761","title":"A Three-Degree-of-Freedom Chesnavich Model for Roaming","authors":["Stephen Wiggins"],"published":"2026-07-12","primary_category":"physics.chem-ph","categories":["physics.chem-ph","math.DS"],"url":"https://arxiv.org/abs/2607.10761","abstract":"A three-degree-of-freedom extension of the Chesnavich reaction model examines roaming outside a planar minimum-energy pathway. Symmetry breaking destabilizes key periodic motion, while normally hyperbolic invariant manifolds provide dividing surfaces that organize reactive and roaming transport."}
+      ]
+    },
+    {
+      "topic": "biology",
+      "display_name": "Biology",
+      "keywords": ["proteins", "RNA", "DNA methylation", "multi-omics"],
+      "papers": [
+        {
+          "arxiv_id": "2607.07866",
+          "title": "UMA-Inverse: Ligand-Conditioned Protein Inverse Folding with a Distogram-Supervised Dense Pair Encoder",
+          "authors": ["William Sobolewski"],
+          "published": "2026-07-08",
+          "primary_category": "q-bio.BM",
+          "categories": ["q-bio.BM"],
+          "url": "https://arxiv.org/abs/2607.07866",
+          "abstract": "UMA-Inverse designs protein sequences conditioned on complete ligand geometry using a dense residue-ligand pair encoder and an autoregressive decoder. The compact model distributes ligand information beyond the binding interface and provides a characterized baseline for ligand-aware inverse protein folding."
+        },
+        {
+          "arxiv_id": "2607.07186",
+          "title": "Enhanced sampling and cryo-EM data resolve magnesium binding to RNA",
+          "authors": ["Olivier Languin-Cattoën", "Elisa Posani", "Giovanni Bussi"],
+          "published": "2026-07-08",
+          "primary_category": "q-bio.BM",
+          "categories": ["q-bio.BM", "physics.bio-ph", "physics.comp-ph"],
+          "url": "https://arxiv.org/abs/2607.07186",
+          "abstract": "An enhanced-sampling strategy accelerates inner-shell magnesium binding in a large RNA ribozyme and evaluates binding motifs against cryo-electron microscopy density. The results emphasize that adequate sampling dominates agreement with experiment and provide a route for combining simulation with structural data."
+        },
+        {
+          "arxiv_id": "2607.04987",
+          "title": "Data-Driven Soft Labeling Scales DNA Read Classification to Whole-Body Cell-Type Deconvolution",
+          "authors": ["Dmytro Rizdvanetskyi", "Nathan Roos", "Pavlo Lutsik"],
+          "published": "2026-07-06",
+          "primary_category": "cs.LG",
+          "categories": ["cs.LG", "q-bio.GN", "q-bio.QM"],
+          "url": "https://arxiv.org/abs/2607.04987",
+          "abstract": "A read-level cell-type deconvolution method uses data-driven soft labels to model many-to-many relationships between DNA methylation patterns and cell types. On a 39-cell-type atlas, the framework improves mixture estimates and transfers to tissue data outside the training distribution."
+        },
+        {
+          "arxiv_id": "2607.04527",
+          "title": "Causal ASCEND: Scalable Two-tier Causal Discovery on High Dimensional Multi-omics Data",
+          "authors": ["Stephen Asiedu", "David Watson"],
+          "published": "2026-07-05",
+          "primary_category": "stat.ML",
+          "categories": ["stat.ML", "cs.LG", "q-bio.GN"],
+          "url": "https://arxiv.org/abs/2607.04527",
+          "abstract": "ASCEND exploits the known upstream-to-downstream organization of multi-omic systems to make causal discovery tractable at genome scale. Dynamically maintained ancestral conditioning sets reduce conditional-independence testing and improve recovery of directed regulatory relationships in simulations and biological data."
+        },
+        {"arxiv_id":"2607.07352","title":"Bayesian Learning of Distance Metrics Beyond RMSD for Biomolecule Alignment, Clustering, and Domain Identification","authors":["Saumyak Mukherjee","Gerhard Hummer"],"published":"2026-07-08","primary_category":"q-bio.BM","categories":["q-bio.BM","cond-mat.stat-mech"],"url":"https://arxiv.org/abs/2607.07352","abstract":"Bayes-optimal RMSD learns atom weights jointly with structural averages so flexible regions do not overwhelm rigid functional cores. The resulting framework supports biomolecular alignment, conformational clustering, trajectory smoothing, and rigid-domain discovery in molecular-dynamics data."},
+        {"arxiv_id":"2607.01307","title":"A Novel Machine Learning Approach for Central Nervous System Tumor Classification from DNA Methylation","authors":["Paulo R. Ferreira et al."],"published":"2026-07-01","primary_category":"cs.LG","categories":["cs.LG","q-bio.GN"],"url":"https://arxiv.org/abs/2607.01307","abstract":"Sparse random projection and multinomial logistic regression classify central-nervous-system tumors from DNA methylation profiles. Evaluation on reference and independent clinical cohorts reports strong multiclass accuracy and improved concordance over a widely used reference classifier."},
+        {"arxiv_id":"2606.30140","title":"DNA Language Models: An Assessment of Pre-Training for Fine-Tuning Tasks","authors":["Romain Karpinsky","Julien Mozziconacci","Mickaël Delcey"],"published":"2026-06-29","primary_category":"q-bio.GN","categories":["q-bio.GN","cs.CL"],"url":"https://arxiv.org/abs/2606.30140","abstract":"The study benchmarks transformer and convolutional DNA models to test whether costly pretraining improves downstream genomics tasks. It separately examines the contribution of pretraining and whether byte-pair tokenization is appropriate for representing genomic sequence."},
+        {"arxiv_id":"2606.29949","title":"Data-Efficient Multimodal Alignment for Histopathology-based Molecular Prediction","authors":["Dominik Winter et al."],"published":"2026-06-29","primary_category":"eess.IV","categories":["eess.IV","cs.AI","q-bio.GN"],"url":"https://arxiv.org/abs/2606.29949","abstract":"A lightweight contrastive alignment module links frozen histopathology and RNA-sequencing models. It enables gene-set prompting of tissue slides to estimate pathway activity, generalizes across cohorts, and recovers clinically relevant tumor and immune programs without direct sequencing."},
+        {"arxiv_id":"2607.05084","title":"Rethinking Benchmarks and Models for Enzyme Specificity Prediction","authors":["Elizabeth H. Mahood","Natália Komorníková","Tomáš Pluskal","Pranam Chatterjee"],"published":"2026-07-06","primary_category":"q-bio.BM","categories":["q-bio.BM"],"url":"https://arxiv.org/abs/2607.05084","abstract":"Discovery-oriented benchmarks reveal that several enzyme-substrate and enzyme-reaction predictors struggle on unseen enzymes and substrates. A new cytochrome P450 dataset shows that interaction-aware residue-ligand representations can improve enzyme ranking beyond sequence baselines."},
+        {"arxiv_id":"2607.04134","title":"Spectral Diffusion for Protein Dynamics","authors":["Hew Phipps","Matteo Cagiada","Santiago D. Villalba","Charlotte M. Deane"],"published":"2026-07-05","primary_category":"q-bio.BM","categories":["q-bio.BM","q-bio.QM"],"url":"https://arxiv.org/abs/2607.04134","abstract":"DynaMode generates temporally coherent protein dynamics using diffusion in a Fourier representation. Spectral separation distinguishes slow conformational motion from fast atomic fluctuations, supporting efficient temperature-conditioned prediction of residue flexibility and structural ensembles."}
+      ]
+    }
+  ]
+}

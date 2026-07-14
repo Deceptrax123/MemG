@@ -31,7 +31,7 @@ parser.add_argument('--output_dim', type=int, default=384)
 parser.add_argument('--kl_weight', type=float, default=0.45)
 parser.add_argument('--bce_weight', type=float, default=0.45)
 parser.add_argument('--reg_weight', type=float, default=0.1)
-parser.add_argument('--vol_margin', type=float, default=0.3)
+parser.add_argument('--vol_margin', type=float, default=5)
 parser.add_argument('--batch_size', type=int, default=64)
 parser.add_argument('--kl_margin', type=float, default=0.5)
 parser.add_argument('--accumulation_steps', type=int, default=5)
@@ -53,6 +53,15 @@ parser.add_argument('--max_variance', type=float, default=10.0)
 parser.add_argument('--list_ablation_presets', action='store_true')
 parser.add_argument("--visualize_every", type=int, default=0,
                     help="Write query/passage geometry every N steps; 0 disables it.")
+parser.add_argument(
+    "--wandb_plot_every",
+    type=int,
+    default=500,
+    help=(
+        "Log random query/positive/negative ellipses and mu/sigma distributions "
+        "to W&B every N steps; 0 disables it."
+    ),
+)
 parser.add_argument("--visualization_dir", default="visualizations/finetune")
 parser.add_argument("--visualization_examples", type=int, default=4)
 parser.add_argument("--visualization_dpi", type=int, default=150)

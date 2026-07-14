@@ -13,6 +13,7 @@ from agent.visualize_planning import (
 )
 from finetune.visualize_gaussians import (
     covariance_in_basis,
+    gaussian_distribution_values,
     orthogonality_error,
     visualize_projection_batch,
 )
@@ -61,10 +62,34 @@ def test_query_passage_visualization_writes_png_and_json(tmp_path):
         lambdas=lambdas,
         frames=frames,
         diagonal_matrices=diagonals,
+        groups=["query", "positive", "negative"],
     )
     assert output.exists() and output.stat().st_size > 0
     assert output.with_suffix(".json").exists()
     assert len(diagnostics["items"]) == 3
+    assert [item["group"] for item in diagnostics["items"]] == [
+        "query", "positive", "negative"
+    ]
+
+
+def test_gaussian_distribution_values_include_mu_and_full_marginal_sigma():
+    means, lambdas, frames, diagonals = synthetic_geometry(batch=3, dim=12, rank=3)
+
+    values = gaussian_distribution_values(means, lambdas, frames, diagonals)
+
+    expected_variance = (
+        torch.diagonal(diagonals, dim1=-2, dim2=-1)
+        + torch.sum(frames.square() * lambdas[:, None, :], dim=-1)
+    ).numpy()
+    assert values["mu_components"].shape == (36,)
+    assert values["mu_norms"].shape == (3,)
+    assert np.allclose(
+        values["sigma_marginal_variances"], expected_variance.reshape(-1)
+    )
+    assert np.allclose(
+        values["sigma_marginal_standard_deviations"],
+        np.sqrt(expected_variance).reshape(-1),
+    )
 
 
 def test_query_answer_and_rank8_frame_reports(tmp_path):
