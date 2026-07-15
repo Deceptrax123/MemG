@@ -61,6 +61,8 @@ def test_paper_gaussian_manifold_has_no_topic_aggregation(tmp_path):
     )
 
     assert output.exists() and output.stat().st_size > 0
+    topic_output = tmp_path / report["topic_panel_file"]
+    assert topic_output.exists() and topic_output.stat().st_size > 0
     assert report["aggregation"] == "none"
     assert len(report["items"]) == len(records)
     assert all(item["axis_lengths"][0] > 0 for item in report["items"])

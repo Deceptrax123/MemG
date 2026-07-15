@@ -496,11 +496,78 @@ def _plot_paper_gaussian_manifold(
     axis.legend(title="Abstract topic")
     figure.savefig(output, dpi=dpi)
     plt.close(figure)
+    topics = list(dict.fromkeys(record["topic"] for record in records))
+    topic_output = output.with_name("paper_covariance_by_topic.png")
+    topic_figure, topic_axes = plt.subplots(
+        1, len(topics), figsize=(7 * len(topics), 7),
+        sharex=True, sharey=True, constrained_layout=True, squeeze=False,
+    )
+    topic_colormaps = {
+        "physics": "Blues",
+        "chemistry": "Oranges",
+        "biology": "Greens",
+    }
+    for topic_axis, topic in zip(topic_axes.flat, topics):
+        indices = [
+            index for index, record in enumerate(records)
+            if record["topic"] == topic
+        ]
+        colormap = plt.get_cmap(topic_colormaps.get(topic, "viridis"))
+        paper_colors = colormap(np.linspace(0.42, 0.92, len(indices)))
+        for paper_position, (paper_color, index) in enumerate(
+            zip(paper_colors, indices)
+        ):
+            covariance = projected_covariances[index]
+            values, vectors = np.linalg.eigh(covariance)
+            values = np.clip(values, 1e-12, None)
+            axis_lengths = standard_deviations * np.sqrt(values)
+            contour = (
+                projected_means[index, :, None]
+                + vectors @ np.diag(axis_lengths) @ circle
+            )
+            topic_axis.plot(
+                contour[0], contour[1], color=paper_color,
+                linewidth=1.5, alpha=0.82,
+            )
+            topic_axis.scatter(
+                *projected_means[index], color=paper_color,
+                edgecolor="black", linewidth=0.45, s=42, zorder=3,
+            )
+            label_angle = 2.0 * np.pi * paper_position / max(len(indices), 1)
+            label_offset = (
+                42.0 * np.cos(label_angle),
+                42.0 * np.sin(label_angle),
+            )
+            topic_axis.annotate(
+                records[index]["arxiv_id"], projected_means[index],
+                xytext=label_offset, textcoords="offset points", fontsize=7,
+                ha="center", va="center",
+                arrowprops={
+                    "arrowstyle": "-",
+                    "color": paper_color,
+                    "linewidth": 0.55,
+                    "alpha": 0.75,
+                },
+            )
+        topic_axis.set(
+            title=f"{topic.title()} — {len(indices)} paper Gaussians",
+            xlabel="mean PCA 1",
+            aspect="equal",
+        )
+        topic_axis.grid(alpha=0.2)
+    topic_axes.flat[0].set_ylabel("mean PCA 2")
+    topic_figure.suptitle(
+        "Each outline is its paper's own projected learned covariance "
+        f"({standard_deviations:g}σ); no aggregation"
+    )
+    topic_figure.savefig(topic_output, dpi=dpi)
+    plt.close(topic_figure)
     return {
         "explained_variance_ratio": explained,
         "standard_deviations": standard_deviations,
         "coordinate_system": "shared PCA plane fitted to learned paper means",
         "aggregation": "none",
+        "topic_panel_file": topic_output.name,
         "items": items,
     }
 
@@ -742,7 +809,8 @@ def analyze_topic_geometry(
             ),
             "paper_gaussian_manifold": (
                 "Every point and ellipse is one abstract's own learned Gaussian in a "
-                "shared mean-PCA plane; no topic aggregation is used."
+                "shared mean-PCA plane; no topic aggregation is used. A subject-panel "
+                "atlas shows the same paper Gaussians with less cross-topic occlusion."
             ),
             "ellipses": (
                 "Every ellipse uses its paper's own top-two covariance directions; "
@@ -789,6 +857,7 @@ def analyze_topic_geometry(
         "artifacts": {
             "topic_manifold": "topic_manifold.png",
             "paper_gaussian_manifold": "paper_gaussian_manifold.png",
+            "paper_covariance_by_topic": "paper_covariance_by_topic.png",
             "topic_distances": "topic_distances.png",
             "frame_subspace_similarity": "frame_subspace_similarity.png",
             "topic_ellipse_sheets": topic_sheets,
